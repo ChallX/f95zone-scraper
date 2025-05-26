@@ -112,7 +112,8 @@ class F95Scraper {
             this.updateProgress(80, 'Calculating download sizes...');
             
             if (data.success) {
-                this.updateProgress(100, 'Saving to Google Sheets...');                setTimeout(() => {
+                this.updateProgress(100, 'Saving to Google Sheets...');
+                setTimeout(() => {
                     this.displayResult(data);
                     progressContainer.classList.add('hidden');
                     progressContainer.classList.remove('show');
@@ -120,7 +121,7 @@ class F95Scraper {
             } else {
                 throw new Error(data.error || 'Unknown error occurred');
             }
-              } catch (error) {
+        } catch (error) {
             console.error('Scrape error:', error);
             this.displayError(error.message);
             progressContainer.classList.add('hidden');
@@ -130,7 +131,8 @@ class F95Scraper {
             scrapeBtn.disabled = false;
             scrapeBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Extract Game Data';
         }
-    }    updateProgress(percent, text) {
+    }
+    updateProgress(percent, text) {
         const progressBar = document.querySelector('.progress-bar');
         const progressText = document.getElementById('progressText');
         
@@ -145,7 +147,8 @@ class F95Scraper {
         
         resultContent.innerHTML = `
             <div class="row">
-                <div class="col-md-3">                    ${data.data.cover_image ? 
+                <div class="col-md-3">
+                ${data.data.cover_image ? 
                         `<img src="${data.data.cover_image}" alt="Game Cover" class="cover-image img-fluid">` :
                         '<div class="cover-placeholder bg-light d-flex align-items-center justify-content-center"><i class="fas fa-image fa-2x text-muted"></i></div>'
                     }

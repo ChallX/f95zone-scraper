@@ -4,16 +4,36 @@ import { Logger } from '../utils/logger.js';
 export class AIService {
   constructor() {
     this.logger = new Logger();
-    this.genAI = process.env.GOOGLE_GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY) : null;
-    this.model = this.genAI ? this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }) : null;
+    
+    try {
+      this.genAI = process.env.GOOGLE_GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY) : null;
+      this.model = this.genAI ? this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }) : null;
+      
+      if (this.isConfigured()) {
+        this.logger.info('Google Gemini AI service initialized successfully');
+      } else {
+        this.logger.warn('Google Gemini API key not configured - AI service will not be available');
+      }
+    } catch (error) {
+      this.logger.error('Failed to initialize AI service:', error);
+      this.genAI = null;
+      this.model = null;
+    }
   }
 
   isConfigured() {
     return !!(this.genAI && this.model);
-  }
-  async extractGameData(pageData, originalUrl) {
+  }  async extractGameData(pageData, originalUrl) {
     if (!this.model) {
       throw new Error('Google Gemini API key not configured');
+    }
+
+    if (!pageData || typeof pageData !== 'object') {
+      throw new Error('Invalid page data provided');
+    }
+
+    if (!originalUrl || typeof originalUrl !== 'string') {
+      throw new Error('Invalid original URL provided');
     }
 
     const prompt = `
@@ -38,16 +58,18 @@ For download_links, look for:
 - Different versions if multiple exist
 
 Page Content:
-Title: ${pageData.title}
+Title: ${pageData.title || 'No title'}
 URL: ${originalUrl}
-Content: ${pageData.content.substring(0, 8000)}
+Content: ${(pageData.content || '').substring(0, 8000)}
 
-Images found: ${JSON.stringify(pageData.images.slice(0, 10))}
-Links found: ${JSON.stringify(pageData.links.slice(0, 20))}
+Images found: ${JSON.stringify((pageData.images || []).slice(0, 10))}
+Links found: ${JSON.stringify((pageData.links || []).slice(0, 20))}
 
 Return only valid JSON with the structure above.`;
 
     try {
+      this.logger.info('Starting AI extraction...');
+      
       const result = await this.model.generateContent({
         contents: [{
           role: 'user',
@@ -61,11 +83,19 @@ Return only valid JSON with the structure above.`;
         }
       });
 
+      if (!result || !result.response) {
+        throw new Error('No response received from AI service');
+      }
+
       const response = await result.response;
-      const extractedText = response.text().trim();
+      const extractedText = response.text();
       
+      if (!extractedText || typeof extractedText !== 'string') {
+        throw new Error('Invalid response text from AI service');
+      }
+
       // Clean the response to ensure it's valid JSON
-      let cleanedJson = extractedText;
+      let cleanedJson = extractedText.trim();
       if (cleanedJson.startsWith('```json')) {
         cleanedJson = cleanedJson.replace(/```json\n?/, '').replace(/\n?```$/, '');
       }
@@ -73,104 +103,183 @@ Return only valid JSON with the structure above.`;
         cleanedJson = cleanedJson.replace(/```\n?/, '').replace(/\n?```$/, '');
       }
 
-      const gameData = JSON.parse(cleanedJson);
+      let gameData;
+      try {
+        gameData = JSON.parse(cleanedJson);
+      } catch (parseError) {
+        this.logger.warn('AI response was not valid JSON, falling back to regex extraction');
+        throw new Error(`Invalid JSON from AI: ${parseError.message}`);
+      }
       
       // Add original URL
       gameData.original_url = originalUrl;
       
       // Validate and clean the data
-      return this.validateAndCleanGameData(gameData);
+      const validatedData = this.validateAndCleanGameData(gameData);
+      this.logger.info('AI extraction completed successfully');
+      return validatedData;
 
     } catch (error) {
       this.logger.error('Error extracting game data with Google Gemini:', error);
       
       // Fallback extraction using regex patterns
-      return this.fallbackExtraction(pageData, originalUrl);
+      this.logger.info('Attempting fallback extraction...');
+      try {
+        return this.fallbackExtraction(pageData, originalUrl);
+      } catch (fallbackError) {
+        this.logger.error('Fallback extraction also failed:', fallbackError);
+        throw new Error(`AI extraction failed: ${error.message}. Fallback also failed: ${fallbackError.message}`);
+      }
+    }
+  }
+  validateAndCleanGameData(data) {
+    if (!data || typeof data !== 'object') {
+      this.logger.warn('Invalid game data provided for validation');
+      data = {};
+    }
+
+    try {
+      const cleaned = {
+        game_name: (data.game_name && typeof data.game_name === 'string') ? data.game_name.trim() : 'Unknown Game',
+        version: (data.version && typeof data.version === 'string') ? data.version.trim() : 'Unknown',
+        developer: (data.developer && typeof data.developer === 'string') ? data.developer.trim() : 'Unknown',
+        release_date: (data.release_date && typeof data.release_date === 'string') ? data.release_date.trim() : null,
+        cover_image: (data.cover_image && typeof data.cover_image === 'string' && data.cover_image.startsWith('http')) ? data.cover_image.trim() : null,
+        description: (data.description && typeof data.description === 'string') ? data.description.trim().substring(0, 500) : '',
+        tags: Array.isArray(data.tags) ? data.tags.filter(tag => tag && typeof tag === 'string').map(tag => tag.trim()) : [],
+        download_links: Array.isArray(data.download_links) ? data.download_links : [],
+        file_size: (data.file_size && typeof data.file_size === 'string') ? data.file_size.trim() : null,
+        original_url: (data.original_url && typeof data.original_url === 'string') ? data.original_url.trim() : ''
+      };
+
+      // Validate and clean download links structure
+      cleaned.download_links = cleaned.download_links
+        .filter(link => link && typeof link === 'object' && link.url)
+        .map(link => ({
+          provider: (link.provider && typeof link.provider === 'string') ? link.provider.trim() : 'Unknown',
+          url: (link.url && typeof link.url === 'string') ? link.url.trim() : '',
+          platform: (link.platform && typeof link.platform === 'string') ? link.platform.trim() : 'PC',
+          version: (link.version && typeof link.version === 'string') ? link.version.trim() : cleaned.version
+        }))
+        .filter(link => link.url && link.url.startsWith('http'));
+
+      this.logger.info(`Validated game data: ${cleaned.game_name}`);
+      return cleaned;
+    } catch (error) {
+      this.logger.error('Error validating game data:', error);
+      // Return minimal valid structure
+      return {
+        game_name: 'Unknown Game',
+        version: 'Unknown',
+        developer: 'Unknown',
+        release_date: null,
+        cover_image: null,
+        description: '',
+        tags: [],
+        download_links: [],
+        file_size: null,
+        original_url: data.original_url || ''
+      };
+    }
+  }
+  fallbackExtraction(pageData, originalUrl) {
+    try {
+      this.logger.info('Using fallback extraction method');
+      
+      if (!pageData || typeof pageData !== 'object') {
+        throw new Error('Invalid page data for fallback extraction');
+      }
+
+      const content = pageData.content || '';
+      const title = pageData.title || 'Unknown Game';
+      
+      // Extract game name from title
+      const gameName = title.split(' - ')[0] || title.split('|')[0] || 'Unknown Game';
+      
+      // Extract version using regex
+      const versionMatch = content.match(/v?(\d+\.?\d*\.?\d*\.?\d*)/i);
+      const version = versionMatch ? versionMatch[0] : 'Unknown';
+      
+      // Extract cover image
+      const coverImage = this.findCoverImage(pageData.images || []);
+      
+      // Extract download links
+      const downloadLinks = this.extractDownloadLinks(pageData.links || [], version);
+
+      const result = {
+        game_name: gameName.trim(),
+        version,
+        developer: 'Unknown',
+        release_date: null,
+        cover_image: coverImage,
+        description: content.substring(0, 200) + (content.length > 200 ? '...' : ''),
+        tags: [],
+        download_links: downloadLinks,
+        file_size: null,
+        original_url: originalUrl
+      };
+
+      this.logger.info('Fallback extraction completed successfully');
+      return result;
+    } catch (error) {
+      this.logger.error('Fallback extraction failed:', error);
+      throw new Error(`Fallback extraction failed: ${error.message}`);
     }
   }
 
-  validateAndCleanGameData(data) {
-    const cleaned = {
-      game_name: data.game_name || 'Unknown Game',
-      version: data.version || 'Unknown',
-      developer: data.developer || 'Unknown',
-      release_date: data.release_date || null,
-      cover_image: data.cover_image || null,
-      description: data.description || '',
-      tags: Array.isArray(data.tags) ? data.tags : [],
-      download_links: Array.isArray(data.download_links) ? data.download_links : [],
-      file_size: data.file_size || null,
-      original_url: data.original_url
-    };
-
-    // Validate download links structure
-    cleaned.download_links = cleaned.download_links.map(link => ({
-      provider: link.provider || 'Unknown',
-      url: link.url || '',
-      platform: link.platform || 'PC',
-      version: link.version || cleaned.version
-    })).filter(link => link.url);
-
-    return cleaned;
+  findCoverImage(images) {
+    try {
+      if (!Array.isArray(images)) return null;
+      
+      const coverImage = images.find(img => 
+        img && img.src &&
+        (img.src.includes('attachments') || 
+         img.src.includes('cover') ||
+         (img.alt && img.alt.toLowerCase().includes('cover')))
+      );
+      
+      return coverImage ? coverImage.src : null;
+    } catch (error) {
+      this.logger.warn('Error finding cover image:', error);
+      return null;
+    }
   }
 
-  fallbackExtraction(pageData, originalUrl) {
-    this.logger.info('Using fallback extraction method');
-    
-    const content = pageData.content;
-    const title = pageData.title;
-    
-    // Extract game name from title
-    const gameName = title.split(' - ')[0] || title.split('|')[0] || 'Unknown Game';
-    
-    // Extract version using regex
-    const versionMatch = content.match(/v?(\d+\.?\d*\.?\d*\.?\d*)/i);
-    const version = versionMatch ? versionMatch[0] : 'Unknown';
-    
-    // Extract cover image
-    const coverImage = pageData.images.find(img => 
-      img.src.includes('attachments') || 
-      img.src.includes('cover') ||
-      img.alt.toLowerCase().includes('cover')
-    )?.src || null;
-    
-    // Extract download links
-    const downloadLinks = pageData.links
-      .filter(link => 
-        link.href.includes('mega.nz') ||
-        link.href.includes('drive.google.com') ||
-        link.href.includes('mediafire.com') ||
-        link.href.includes('gofile.io') ||
-        link.href.includes('pixeldrain.com') ||
-        link.text.toLowerCase().includes('pc')
-      )
-      .map(link => {
-        let provider = 'Unknown';
-        if (link.href.includes('mega.nz')) provider = 'MEGA';
-        else if (link.href.includes('drive.google.com')) provider = 'Google Drive';
-        else if (link.href.includes('mediafire.com')) provider = 'MediaFire';
-        else if (link.href.includes('gofile.io')) provider = 'GoFile';
-        else if (link.href.includes('pixeldrain.com')) provider = 'PixelDrain';
-        
-        return {
-          provider,
-          url: link.href,
-          platform: 'PC',
-          version
-        };
-      });
-
-    return {
-      game_name: gameName.trim(),
-      version,
-      developer: 'Unknown',
-      release_date: null,
-      cover_image: coverImage,
-      description: content.substring(0, 200) + '...',
-      tags: [],
-      download_links: downloadLinks,
-      file_size: null,
-      original_url: originalUrl
-    };
+  extractDownloadLinks(links, version) {
+    try {
+      if (!Array.isArray(links)) return [];
+      
+      return links
+        .filter(link => 
+          link && link.href && (
+            link.href.includes('mega.nz') ||
+            link.href.includes('drive.google.com') ||
+            link.href.includes('mediafire.com') ||
+            link.href.includes('gofile.io') ||
+            link.href.includes('pixeldrain.com') ||
+            (link.text && link.text.toLowerCase().includes('pc'))
+          )
+        )
+        .map(link => {
+          let provider = 'Unknown';
+          const href = link.href;
+          
+          if (href.includes('mega.nz')) provider = 'MEGA';
+          else if (href.includes('drive.google.com')) provider = 'Google Drive';
+          else if (href.includes('mediafire.com')) provider = 'MediaFire';
+          else if (href.includes('gofile.io')) provider = 'GoFile';
+          else if (href.includes('pixeldrain.com')) provider = 'PixelDrain';
+          
+          return {
+            provider,
+            url: href,
+            platform: 'PC',
+            version
+          };
+        });
+    } catch (error) {
+      this.logger.warn('Error extracting download links:', error);
+      return [];
+    }
   }
 }
