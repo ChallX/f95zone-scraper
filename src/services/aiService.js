@@ -34,9 +34,7 @@ export class AIService {
 
     if (!originalUrl || typeof originalUrl !== 'string') {
       throw new Error('Invalid original URL provided');
-    }
-
-    const prompt = `
+    }    const prompt = `
 You are a data extraction specialist for F95Zone adult game pages. Extract structured game information from the provided web page content.
 
 IMPORTANT: Extract ALL information accurately and return ONLY valid JSON.
@@ -46,11 +44,17 @@ Extract the following data:
 - version: Current version (look for v1.0, Version 1.2, etc.)
 - developer: Game developer/creator name
 - release_date: Release or update date if mentioned
-- cover_image: Direct URL to the main game cover/preview image
+- cover_image: Direct URL to the main game cover/preview image (IMPORTANT: Prefer original images over thumbnails - avoid URLs containing "/thumb/")
 - description: Brief game description (max 200 chars)
 - tags: Array of game tags/genres mentioned
 - download_links: Array of download objects with {provider, url, platform, version}
 - file_size: Any size information mentioned in the text
+
+For cover_image selection:
+- Look for the main game preview/cover image
+- Prefer high-quality original images over thumbnails
+- If you find a thumbnail URL (containing "/thumb/"), try to provide the original URL by removing "/thumb/" from the path
+- Example: https://attachments.f95zone.to/2024/03/thumb/image.jpg should become https://attachments.f95zone.to/2024/03/image.jpg
 
 For download_links, look for:
 - PC/Windows downloads
@@ -129,9 +133,25 @@ Return only valid JSON with the structure above.`;
       } catch (fallbackError) {
         this.logger.error('Fallback extraction also failed:', fallbackError);
         throw new Error(`AI extraction failed: ${error.message}. Fallback also failed: ${fallbackError.message}`);
-      }
-    }
+      }    }
   }
+
+  convertThumbnailToOriginal(imageUrl) {
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      return imageUrl;
+    }
+    
+    // Convert F95Zone thumbnail URLs to original URLs
+    // Example: https://attachments.f95zone.to/2024/03/thumb/image.jpg -> https://attachments.f95zone.to/2024/03/image.jpg
+    if (imageUrl.includes('/thumb/')) {
+      const originalUrl = imageUrl.replace('/thumb/', '/');
+      this.logger.info(`Converted thumbnail URL to original: ${imageUrl} -> ${originalUrl}`);
+      return originalUrl;
+    }
+    
+    return imageUrl;
+  }
+
   validateAndCleanGameData(data) {
     if (!data || typeof data !== 'object') {
       this.logger.warn('Invalid game data provided for validation');
@@ -144,7 +164,7 @@ Return only valid JSON with the structure above.`;
         version: (data.version && typeof data.version === 'string') ? data.version.trim() : 'Unknown',
         developer: (data.developer && typeof data.developer === 'string') ? data.developer.trim() : 'Unknown',
         release_date: (data.release_date && typeof data.release_date === 'string') ? data.release_date.trim() : null,
-        cover_image: (data.cover_image && typeof data.cover_image === 'string' && data.cover_image.startsWith('http')) ? data.cover_image.trim() : null,
+        cover_image: (data.cover_image && typeof data.cover_image === 'string' && data.cover_image.startsWith('http')) ? this.convertThumbnailToOriginal(data.cover_image.trim()) : null,
         description: (data.description && typeof data.description === 'string') ? data.description.trim().substring(0, 500) : '',
         tags: Array.isArray(data.tags) ? data.tags.filter(tag => tag && typeof tag === 'string').map(tag => tag.trim()) : [],
         download_links: Array.isArray(data.download_links) ? data.download_links : [],
@@ -233,12 +253,10 @@ Return only valid JSON with the structure above.`;
       
       const coverImage = images.find(img => 
         img && img.src &&
-        (img.src.includes('attachments') || 
-         img.src.includes('cover') ||
-         (img.alt && img.alt.toLowerCase().includes('cover')))
+        (img.src.includes('attachments') || img.src.includes('cover') ||(img.alt && img.alt.toLowerCase().includes('cover')))
       );
-      
-      return coverImage ? coverImage.src : null;
+
+      return coverImage ? this.convertThumbnailToOriginal(coverImage.src) : null;
     } catch (error) {
       this.logger.warn('Error finding cover image:', error);
       return null;
