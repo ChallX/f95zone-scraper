@@ -26,23 +26,38 @@ npm install
 
 ### 2. Configure Environment Variables
 
-Copy `.env` file and update with your API keys:
+Copy the example environment file and update with your API keys:
 
 ```bash
 # Copy the example environment file
-copy .env .env.local
+copy .env.example .env
 ```
 
 Edit `.env` with your actual credentials:
 
 ```env
-# Google Gemini API Key (Required)
+# Server Configuration
+PORT=3000
+NODE_ENV=development
+LOG_LEVEL=info
+
+# Google Gemini API Key (Required for AI data extraction)
 GOOGLE_GEMINI_API_KEY=your-google-gemini-api-key-here
 
-# Google Sheets Configuration (Required)
+# Google Sheets Configuration (Required for saving data)
 GOOGLE_SHEET_ID=your-google-sheet-id-here
-GOOGLE_SERVICE_ACCOUNT_EMAIL=your-service-account@project.iam.gserviceaccount.com
-GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nyour-private-key-here\n-----END PRIVATE KEY-----"
+GOOGLE_PROJECT_ID=your-google-project-id
+GOOGLE_PRIVATE_KEY_ID=your-private-key-id
+GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nyour-private-key-content-here\n-----END PRIVATE KEY-----\n"
+GOOGLE_CLIENT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_SERVICE_ACCOUNT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
+GOOGLE_SHEET_NAME=sheet-name-here
+
+# Optional: Scraping Configuration
+SCRAPE_DELAY=2000
+MAX_RETRIES=3
+TIMEOUT=30000
 ```
 
 ### 3. Run the Application
@@ -146,13 +161,21 @@ const response = await fetch('/api/scrape', {
 
 | Variable | Required | Description |
 |----------|----------|-------------|
+| `PORT` | No | Server port (default: 3000) |
+| `NODE_ENV` | No | Environment (development/production) |
+| `LOG_LEVEL` | No | Logging level (debug/info/warn/error) |
 | `GOOGLE_GEMINI_API_KEY` | Yes | Google Gemini API key for AI extraction |
 | `GOOGLE_SHEET_ID` | Yes | Google Sheets document ID |
-| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Yes | Service account email |
+| `GOOGLE_PROJECT_ID` | Yes | Google Cloud project ID |
+| `GOOGLE_PRIVATE_KEY_ID` | Yes | Service account private key ID |
 | `GOOGLE_PRIVATE_KEY` | Yes | Service account private key |
-| `PORT` | No | Server port (default: 3000) |
-| `LOG_LEVEL` | No | Logging level (default: info) |
-| `SCRAPE_DELAY` | No | Delay between requests (default: 2000ms) |
+| `GOOGLE_CLIENT_EMAIL` | Yes | Service account email |
+| `GOOGLE_CLIENT_ID` | Yes | Service account client ID |
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Yes | Service account email (alias) |
+| `GOOGLE_SHEET_NAME` | No | Sheet name (default: "Sheet1") |
+| `SCRAPE_DELAY` | No | Delay between requests in ms (default: 2000) |
+| `MAX_RETRIES` | No | Maximum retry attempts (default: 3) |
+| `TIMEOUT` | No | Request timeout in ms (default: 30000) |
 
 ### Supported Download Providers
 
