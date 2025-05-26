@@ -8,12 +8,15 @@ A powerful automation tool that extracts game data from F95Zone using AI and sav
 - 🕷️ **Advanced Web Scraping**: Puppeteer-based scraping with anti-detection measures
 - 📊 **Google Sheets Integration**: Automatically saves data to spreadsheets
 - 📏 **Download Size Detection**: Calculates file sizes from multiple download providers
-- 🎨 **Beautiful Web Interface**: Modern, responsive UI for easy operation
+- 🎨 **Beautiful Web Interface**: Modern, responsive UI for easy operation (included in repo)
 - 📱 **Real-time Progress**: Live updates during the scraping process
 - 🔄 **Duplicate Detection**: Prevents duplicate entries
 - 📈 **Comprehensive Logging**: Detailed logs for debugging and monitoring
+- 📄 **Open Source**: MIT licensed for free use and modification
 
 ## Quick Start
+
+> **Note**: This project now includes the complete web interface in version control. The `public/` directory containing the UI files is no longer ignored by Git.
 
 ### 1. Install Dependencies
 
@@ -238,7 +241,7 @@ Check the logs directory for detailed error information:
 
 ### Project Structure
 
-```
+```plaintext
 f95zone-scraper/
 ├── src/
 │   ├── index.js              # Main server file
@@ -248,11 +251,13 @@ f95zone-scraper/
 │   │   └── googleSheetsService.js # Google Sheets integration
 │   └── utils/
 │       └── logger.js         # Logging utility
-├── public/
+├── public/                   # Web UI (included in version control)
 │   ├── index.html           # Web interface
-│   └── app.js              # Frontend JavaScript
+│   ├── app.js              # Frontend JavaScript
+│   └── styles.css          # UI styling
 ├── logs/                   # Application logs
 ├── .env                   # Environment variables
+├── LICENSE                # MIT License
 └── package.json          # Dependencies and scripts
 ```
 

@@ -77,7 +77,7 @@ dist
 
 # Gatsby files
 .cache/
-public
+# public - UI files are now included in version control
 
 # Storybook build outputs
 .out
