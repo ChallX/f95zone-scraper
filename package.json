@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "node src/test.js"
+    "test": "node tests/test.js"
   },
   "keywords": [
     "scraper",
@@ -33,8 +33,5 @@
     "puppeteer": "^24.9.0",
     "sharp": "^0.33.0",
     "winston": "^3.11.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.2"
   }
 }
