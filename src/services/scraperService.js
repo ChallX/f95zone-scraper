@@ -12,8 +12,7 @@ export class ScraperService {
   async initBrowser() {
     try {
       if (!this.browser) {
-        this.logger.info('Initializing Puppeteer browser...');
-        this.browser = await puppeteer.launch({
+        this.logger.info('Initializing Puppeteer browser...');        this.browser = await puppeteer.launch({
           headless: 'new',
           args: [
             '--no-sandbox',
@@ -23,7 +22,28 @@ export class ScraperService {
             '--no-first-run',
             '--no-zygote',
             '--single-process',
-            '--disable-gpu'
+            '--disable-gpu',
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor',
+            '--disable-blink-features=AutomationControlled',
+            '--disable-background-networking',
+            '--disable-background-timer-throttling',
+            '--disable-renderer-backgrounding',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-client-side-phishing-detection',
+            '--disable-component-extensions-with-background-pages',
+            '--disable-default-apps',
+            '--disable-extensions',
+            '--disable-hang-monitor',
+            '--disable-ipc-flooding-protection',
+            '--disable-popup-blocking',
+            '--disable-prompt-on-repost',
+            '--disable-sync',
+            '--metrics-recording-only',
+            '--no-default-browser-check',
+            '--safebrowsing-disable-auto-update',
+            '--use-mock-keychain',
+            '--window-size=1366,768'
           ]
         });
         this.logger.info('Browser initialized successfully');
@@ -48,9 +68,21 @@ export class ScraperService {
       
       const browser = await this.initBrowser();
       this.authPage = await browser.newPage();
+        // Set modern user agent and realistic headers
+      await this.authPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
       
-      // Set user agent and headers
-      await this.authPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+      // Add comprehensive headers to avoid bot detection
+      await this.authPage.setExtraHTTPHeaders({
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none'
+      });
       
       // Navigate to login page
       await this.authPage.goto('https://f95zone.to/login/', { 
@@ -61,28 +93,70 @@ export class ScraperService {
       // Wait for login form
       await this.authPage.waitForSelector('input[name="login"]', { timeout: 10000 });
       
-      // Fill in credentials
-      await this.authPage.type('input[name="login"]', username);
-      await this.authPage.type('input[name="password"]', password);
+      // Extract CSRF token if present
+      const csrfToken = await this.authPage.evaluate(() => {
+        const csrfInput = document.querySelector('input[name="_token"], input[name="csrf_token"], input[name="_xfToken"]');
+        return csrfInput ? csrfInput.value : null;
+      });
       
-      // Submit the form
+      if (csrfToken) {
+        this.logger.info('Found CSRF token for form submission');
+      }
+        // Fill in credentials with human-like delays
+      await this.authPage.type('input[name="login"]', username, { delay: 100 });
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await this.authPage.type('input[name="password"]', password, { delay: 120 });
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Submit the form with more specific selectors
       await Promise.all([
-        this.authPage.waitForNavigation({ waitUntil: 'networkidle2' }),
-        this.authPage.click('button[type="submit"], input[type="submit"]')
+        this.authPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }),
+        this.authPage.click('.button--primary[type="submit"], button.button--primary, input.button--primary[type="submit"], button[type="submit"], input[type="submit"]')
       ]);
+        // Wait for page to fully load after submission
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Check if login was successful
+      // Enhanced login success detection
       const currentUrl = this.authPage.url();
-      const isLoggedIn = !currentUrl.includes('/login/') && 
-                        !await this.authPage.$('.errorPanel') &&
-                        await this.authPage.$('.p-nav-opposite'); // Look for user menu
+      
+      const loginChecks = await this.authPage.evaluate(() => {
+        return {
+          hasErrorPanel: !!document.querySelector('.errorPanel, .error, .alert--error, .blockMessage--error'),
+          hasUserMenu: !!document.querySelector('.p-nav-opposite, .avatar, .username, .p-navgroup-link--user'),
+          isOnLoginPage: window.location.href.includes('/login/'),
+          hasLogoutLink: !!document.querySelector('a[href*="logout"]'),
+          pageTitle: document.title,
+          bodyText: document.body ? document.body.innerText.substring(0, 500) : ''
+        };
+      });
+      
+      this.logger.info('Login check results:', {
+        url: currentUrl,
+        hasErrorPanel: loginChecks.hasErrorPanel,
+        hasUserMenu: loginChecks.hasUserMenu,
+        isOnLoginPage: loginChecks.isOnLoginPage,
+        hasLogoutLink: loginChecks.hasLogoutLink,
+        pageTitle: loginChecks.pageTitle
+      });
+        const isLoggedIn = !loginChecks.isOnLoginPage && 
+                        !loginChecks.hasErrorPanel &&
+                        (loginChecks.hasUserMenu || loginChecks.hasLogoutLink);
       
       if (isLoggedIn) {
         this.isAuthenticated = true;
         this.logger.info('F95Zone authentication successful');
         return true;
       } else {
+        // DEBUG: Take screenshot to see what went wrong
+        try {
+          await this.authPage.screenshot({ path: 'debug-login-fail.png' });
+          this.logger.info('Debug screenshot saved as debug-login-fail.png');
+        } catch (screenshotError) {
+          this.logger.warn('Could not save debug screenshot:', screenshotError.message);
+        }
+        
         this.logger.error('F95Zone authentication failed - check credentials');
+        this.logger.error('Debug info:', loginChecks);
         await this.authPage.close();
         this.authPage = null;
         return false;
@@ -121,9 +195,8 @@ export class ScraperService {
         this.logger.info('Using authenticated session for scraping');
       } else {
         page = await browser.newPage();
-        
-        // Set user agent and headers for unauthenticated session
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+          // Set user agent and headers for unauthenticated session
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         
         await page.setExtraHTTPHeaders({
           'Accept-Language': 'en-US,en;q=0.9',
