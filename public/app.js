@@ -8,11 +8,21 @@ class F95Scraper {
         await this.checkStatus();
         await this.loadGames();
         this.setupEventListeners();
-    }
-
-    setupEventListeners() {
+    }    setupEventListeners() {
         const form = document.getElementById('scrapeForm');
         form.addEventListener('submit', (e) => this.handleScrape(e));
+        
+        // Add event listeners for refresh buttons
+        const refreshHeaderBtn = document.getElementById('refreshHeaderBtn');
+        const refreshAfterScrapeBtn = document.getElementById('refreshAfterScrapeBtn');
+        
+        if (refreshHeaderBtn) {
+            refreshHeaderBtn.addEventListener('click', () => this.loadGames());
+        }
+        
+        if (refreshAfterScrapeBtn) {
+            refreshAfterScrapeBtn.addEventListener('click', () => this.loadGames());
+        }
     }
 
     async checkStatus() {
@@ -308,10 +318,3 @@ class F95Scraper {
 document.addEventListener('DOMContentLoaded', () => {
     window.scraper = new F95Scraper();
 });
-
-// Global function for manual refresh
-function loadGames() {
-    if (window.scraper) {
-        window.scraper.loadGames();
-    }
-}
