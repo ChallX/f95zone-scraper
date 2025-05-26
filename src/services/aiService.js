@@ -39,6 +39,13 @@ You are a data extraction specialist for F95Zone adult game pages. Extract struc
 
 IMPORTANT: Extract ALL information accurately and return ONLY valid JSON.
 
+This page may be from an authenticated session, so you may have access to:
+- Complete download links (MEGA, Google Drive, MediaFire, etc.)
+- Accurate file sizes
+- Full game descriptions
+- Developer information
+- Release notes and version details
+
 Extract the following data:
 - game_name: The exact game title
 - version: Current version (look for v1.0, Version 1.2, etc.)
@@ -57,9 +64,18 @@ For cover_image selection:
 - Example: https://attachments.f95zone.to/2024/03/thumb/image.jpg should become https://attachments.f95zone.to/2024/03/image.jpg
 
 For download_links, look for:
-- PC/Windows downloads
-- MEGA, Google Drive, MediaFire, GoFile, PixelDrain, WorkUpload links
+- PC/Windows downloads (prioritize these)
+- Mac/Android downloads if available
+- MEGA, Google Drive, MediaFire, GoFile, PixelDrain, WorkUpload, UploadHaven links
 - Different versions if multiple exist
+- Pay attention to file sizes mentioned next to download links
+- Look for spoiler tags or hidden content that may contain download information
+
+Pay special attention to:
+- Spoiler tags containing download links
+- Version-specific download sections
+- File size information (GB/MB) near download links
+- Platform-specific downloads (PC, Mac, Android)
 
 Page Content:
 Title: ${pageData.title || 'No title'}

@@ -44,6 +44,10 @@ LOG_LEVEL=info
 # Google Gemini API Key (Required for AI data extraction)
 GOOGLE_GEMINI_API_KEY=your-google-gemini-api-key-here
 
+# F95Zone Authentication (Optional - for accessing protected content)
+F95ZONE_USERNAME=your-f95zone-username
+F95ZONE_PASSWORD=your-f95zone-password
+
 # Google Sheets Configuration (Required for saving data)
 GOOGLE_SHEET_ID=your-google-sheet-id-here
 GOOGLE_PROJECT_ID=your-google-project-id
@@ -80,6 +84,36 @@ Visit `http://localhost:3000` in your browser.
 - 15 requests per minute
 - 1 million tokens per month
 - No credit card required
+
+### F95Zone Authentication (Optional)
+
+To access protected content like download links and complete game information, you can configure F95Zone authentication:
+
+1. **Create F95Zone Account** (if you don't have one):
+   - Go to [F95Zone Registration](https://f95zone.to/register/)
+   - Create a free account
+   - Verify your email address
+
+2. **Add Credentials to Environment**:
+   ```env
+   F95ZONE_USERNAME=your-username-here
+   F95ZONE_PASSWORD=your-password-here
+   ```
+
+3. **Benefits of Authentication**:
+   - ✅ Access to download links (often hidden behind spoiler tags)
+   - ✅ Complete file size information
+   - ✅ Access to member-only content
+   - ✅ Reduced rate limiting
+   - ✅ Better scraping reliability
+
+4. **Security Notes**:
+   - Credentials are stored locally in your `.env` file
+   - Authentication is handled automatically during scraping
+   - Session is maintained across multiple scraping requests
+   - No credentials are sent to external services
+
+**Note**: Authentication is optional. The scraper will work without it, but some content may be restricted or incomplete.
 
 ### Google Sheets Setup
 
@@ -165,6 +199,8 @@ const response = await fetch('/api/scrape', {
 | `NODE_ENV` | No | Environment (development/production) |
 | `LOG_LEVEL` | No | Logging level (debug/info/warn/error) |
 | `GOOGLE_GEMINI_API_KEY` | Yes | Google Gemini API key for AI extraction |
+| `F95ZONE_USERNAME` | No | F95Zone username for authentication |
+| `F95ZONE_PASSWORD` | No | F95Zone password for authentication |
 | `GOOGLE_SHEET_ID` | Yes | Google Sheets document ID |
 | `GOOGLE_PROJECT_ID` | Yes | Google Cloud project ID |
 | `GOOGLE_PRIVATE_KEY_ID` | Yes | Service account private key ID |

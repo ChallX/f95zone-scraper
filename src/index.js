@@ -107,18 +107,27 @@ app.post('/api/scrape', async (req, res) => {
       }
     } catch (checkError) {
       logger.warn('Could not check for existing game:', checkError.message);
-    }
-
-    // Step 1: Scrape the F95Zone page
+    }    // Step 1: Scrape the F95Zone page with retry logic
     let pageData;
     try {
-      pageData = await scraperService.scrapePage(url);
+      pageData = await scraperService.scrapePageWithRetry(url);
       logger.info('Page scraped successfully');
     } catch (scrapeError) {
       logger.error('Scraping failed:', scrapeError);
+      
+      // Provide more specific error messages
+      let errorDetails = scrapeError.message;
+      if (scrapeError.message.includes('authentication')) {
+        errorDetails = 'Authentication required or failed. Please check your F95Zone credentials in the .env file.';
+      } else if (scrapeError.message.includes('timeout')) {
+        errorDetails = 'Request timed out. The page may be temporarily unavailable.';
+      } else if (scrapeError.message.includes('navigation')) {
+        errorDetails = 'Failed to navigate to the page. Please check the URL.';
+      }
+      
       return res.status(500).json({ 
         error: 'Failed to scrape page',
-        details: scrapeError.message
+        details: errorDetails
       });
     }
 
@@ -264,15 +273,19 @@ app.get('/api/download', async (req, res) => {
 });
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
   try {
+    // Check F95Zone authentication status
+    const f95zoneAuthStatus = await scraperService.getAuthenticationStatus();
+    
     res.json({ 
       status: 'OK', 
       timestamp: new Date().toISOString(),
       services: {
         scraper: 'operational',
         ai: aiService.isConfigured() ? 'operational' : 'needs_api_key',
-        sheets: googleSheetsService.isConfigured() ? 'operational' : 'needs_credentials'
+        sheets: googleSheetsService.isConfigured() ? 'operational' : 'needs_credentials',
+        f95zone_auth: f95zoneAuthStatus
       }
     });
   } catch (error) {
