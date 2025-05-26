@@ -40,7 +40,8 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-      "img-src": ["'self'", "data:", "https://attachments.f95zone.to", "https://f95zone.to"]
+      "img-src": ["'self'", "data:", "https://attachments.f95zone.to", "https://f95zone.to"],
+      "script-src": ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"],
     }
   }
 }));
