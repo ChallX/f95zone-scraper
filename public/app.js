@@ -141,9 +141,7 @@ class F95Scraper {
                 </div>
             `;
         }
-    }
-
-    async handleScrape(e) {
+    }    async handleScrape(e) {
         e.preventDefault();
 
         const url = document.getElementById('gameUrl').value;
@@ -151,6 +149,19 @@ class F95Scraper {
         const progressContainer = document.getElementById('progressContainer');
         const resultContainer = document.getElementById('resultContainer');
         const errorContainer = document.getElementById('errorContainer');
+        
+        // Generate unique session ID
+        const sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        let eventSource = null;
+        let isCompleted = false;
+        
+        // Helper function to safely close EventSource
+        const closeEventSource = () => {
+            if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
+                eventSource.close();
+            }
+        };
+        
         // Reset UI
         resultContainer.classList.add('hidden');
         resultContainer.classList.remove('show');
@@ -164,35 +175,78 @@ class F95Scraper {
         scrapeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
 
         try {
-            // Simulate progress
-            this.updateProgress(20, 'Scraping F95Zone page...');
+            // Set up Server-Sent Events for real-time progress
+            eventSource = new EventSource(`/api/progress/${sessionId}`);
+            
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.status === 'connected') {
+                        this.updateProgress(0, 'Connecting to server...');
+                    } else if (data.status === 'progress') {
+                        this.updateProgress(data.progress, data.message);
+                    } else if (data.status === 'completed') {
+                        isCompleted = true;
+                        this.updateProgress(100, 'Extraction complete!');
+                        setTimeout(() => {
+                            this.displayResult(data.data);
+                            progressContainer.classList.add('hidden');
+                            progressContainer.classList.remove('show');
+                            closeEventSource();
+                        }, 1000);
+                    } else if (data.status === 'error') {
+                        isCompleted = true;
+                        this.displayError(data.message);
+                        progressContainer.classList.add('hidden');
+                        progressContainer.classList.remove('show');
+                        closeEventSource();
+                    }
+                } catch (parseError) {
+                    console.error('Error parsing SSE data:', parseError);
+                }
+            };
 
+            eventSource.onerror = (error) => {
+                // Only log error if we haven't completed successfully
+                if (!isCompleted) {
+                    console.error('SSE connection error:', error);
+                }
+                closeEventSource();
+            };
+
+            // Start the scraping process with the session ID
             const response = await fetch('/api/scrape', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ url })
+                body: JSON.stringify({ url, sessionId })
             });
 
-            this.updateProgress(50, 'Extracting data with AI...');
-            
             const data = await response.json();
 
-            this.updateProgress(80, 'Calculating download sizes...');
-
-            if (data.success) {
-                this.updateProgress(100, 'Saving to Google Sheets...');
-                setTimeout(() => {
-                    this.displayResult(data);
+            // Handle immediate errors (before SSE processing)
+            if (!data.success) {
+                if (response.status === 409) {
+                    // Game already exists - handle immediately
+                    isCompleted = true;
+                    closeEventSource();
+                    this.displayError(data.details);
                     progressContainer.classList.add('hidden');
                     progressContainer.classList.remove('show');
-                }, 1000);
-            } else {
-                throw new Error(data.error || 'Unknown error occurred');
+                } else {
+                    // Other errors
+                    isCompleted = true;
+                    closeEventSource();
+                    throw new Error(data.error || 'Unknown error occurred');
+                }
             }
+            // If successful, SSE will handle the completion
         } catch (error) {
             console.error('Scrape error:', error);
+            isCompleted = true;
+            closeEventSource();
             this.displayError(error.message);
             progressContainer.classList.add('hidden');
             progressContainer.classList.remove('show');
@@ -201,13 +255,24 @@ class F95Scraper {
             scrapeBtn.disabled = false;
             scrapeBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Extract Game Data';
         }
-    }
-    updateProgress(percent, text) {
+    }    updateProgress(percent, text) {
         const progressBar = document.querySelector('.progress-bar');
+        const progressContainer = document.querySelector('.progress[role="progressbar"]');
         const progressText = document.getElementById('progressText');
         
-        progressBar.style.width = `${percent}%`;
-        progressText.textContent = text;
+        if (progressBar) {
+            progressBar.style.width = `${percent}%`;
+            // Remove initial class when progress starts
+            if (percent > 0) {
+                progressBar.classList.remove('progress-bar-initial');
+            }
+        }
+        if (progressContainer) {
+            progressContainer.setAttribute('aria-valuenow', percent);
+        }
+        if (progressText) {
+            progressText.textContent = text;
+        }
     }
 
     displayResult(data) {

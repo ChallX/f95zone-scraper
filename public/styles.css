@@ -71,8 +71,9 @@ body {
     background-color: rgba(102, 126, 234, 0.1);
 }
 
+/* Custom theme color for progress bars - let Bootstrap handle stripes and animation */
 .progress-bar {
-    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    background-color: #667eea;
 }
 
 .alert {
@@ -133,7 +134,9 @@ body {
     width: 0%;
 }
 
-/* Show/Hide utility classes */
+.progress-bar {
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
 .show {
     display: block !important;
 }
