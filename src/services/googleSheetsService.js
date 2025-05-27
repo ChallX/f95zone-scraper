@@ -211,9 +211,114 @@ export class GoogleSheetsService {
       } else if (error.code === 403) {
         throw new Error('Permission denied: Service account may not have access to the spreadsheet');
       } else if (error.code === 404) {
+        throw new Error('Spreadsheet not found: Check if the GOOGLE_SHEET_ID is correct');      } else {
+        throw new Error(`Failed to add game data: ${error.message}`);
+      }
+    }
+  }
+
+  async updateGameData(existingGame, newGameData) {
+    if (!this.isConfigured()) {
+      throw new Error('Google Sheets not configured');
+    }
+
+    if (!existingGame || !newGameData || typeof newGameData !== 'object') {
+      throw new Error('Invalid game data provided for update');
+    }
+
+    try {
+      await this.ensureHeaders();
+
+      // Keep the original game number
+      const gameNumber = existingGame.game_number;
+      const gameName = newGameData.game_name || existingGame.game_name || 'Unknown Game';
+      const version = newGameData.version || existingGame.version || 'Unknown';
+
+      this.logger.info(`Updating game #${gameNumber}: ${gameName} (${existingGame.version || 'Unknown'} → ${version})`);
+
+      // Merge data: use new data where available, fall back to existing data
+      const mergedData = {
+        game_name: newGameData.game_name || existingGame.game_name,
+        version: newGameData.version || existingGame.version,
+        developer: newGameData.developer || existingGame.developer,
+        release_date: newGameData.release_date || existingGame.release_date,
+        original_url: newGameData.original_url || existingGame.original_url, // Update to new URL
+        cover_image: newGameData.cover_image || existingGame.cover_image,
+        description: newGameData.description || existingGame.description,
+        tags: newGameData.tags && newGameData.tags.length > 0 ? newGameData.tags : existingGame.tags,
+        total_size_gb: newGameData.total_size_gb || existingGame.total_size_gb,
+        total_size_bytes: newGameData.total_size_bytes || existingGame.total_size_bytes,
+        download_links: newGameData.download_links && newGameData.download_links.length > 0 ? newGameData.download_links : existingGame.download_links,
+        individual_sizes: newGameData.individual_sizes && newGameData.individual_sizes.length > 0 ? newGameData.individual_sizes : existingGame.individual_sizes,
+        extracted_date: new Date().toISOString() // Always update extraction date
+      };
+
+      const row = [
+        gameNumber, // Keep original game number
+        mergedData.game_name,
+        mergedData.version,
+        mergedData.developer || 'Unknown',
+        mergedData.release_date || '',
+        mergedData.original_url || '',
+        mergedData.cover_image || '',
+        mergedData.description || '',
+        Array.isArray(mergedData.tags) ? mergedData.tags.join(', ') : '',
+        mergedData.total_size_gb || '0.00',
+        mergedData.total_size_bytes || 0,
+        JSON.stringify(mergedData.download_links || []),
+        JSON.stringify(mergedData.individual_sizes || []),
+        mergedData.extracted_date
+      ];
+
+      // Find the row to update by getting all data and finding the matching game number
+      const allData = await this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.spreadsheetId,
+        range: `${this.sheetName}!A:N`
+      });
+
+      if (!allData.data.values || allData.data.values.length <= 1) {
+        throw new Error('No data found in spreadsheet');
+      }
+
+      // Find the row index (1-based, +1 for header)
+      const dataRows = allData.data.values.slice(1);
+      const rowIndex = dataRows.findIndex(row => parseInt(row[0]) === parseInt(gameNumber));
+      
+      if (rowIndex === -1) {
+        throw new Error(`Game #${gameNumber} not found in spreadsheet`);
+      }
+
+      // Convert to 1-based index and add 2 (1 for 0-based to 1-based, 1 for header)
+      const sheetRowIndex = rowIndex + 2;
+
+      // Update the specific row
+      const updateResponse = await this.sheets.spreadsheets.values.update({
+        spreadsheetId: this.spreadsheetId,
+        range: `${this.sheetName}!A${sheetRowIndex}:N${sheetRowIndex}`,
+        valueInputOption: 'RAW',
+        resource: {
+          values: [row]
+        }
+      });
+
+      if (!updateResponse || !updateResponse.data) {
+        throw new Error('Invalid response from Google Sheets API');
+      }
+
+      this.logger.info(`Game #${gameNumber} updated in Google Sheets successfully: ${gameName}`);
+      return gameNumber;
+
+    } catch (error) {
+      this.logger.error('Error updating game data in Google Sheets:', error);
+      
+      if (error.code === 'ENOTFOUND') {
+        throw new Error('Network error: Unable to reach Google Sheets API');
+      } else if (error.code === 403) {
+        throw new Error('Permission denied: Service account may not have access to the spreadsheet');
+      } else if (error.code === 404) {
         throw new Error('Spreadsheet not found: Check if the GOOGLE_SHEET_ID is correct');
       } else {
-        throw new Error(`Failed to add game data: ${error.message}`);
+        throw new Error(`Failed to update game data: ${error.message}`);
       }
     }
   }
@@ -287,8 +392,25 @@ export class GoogleSheetsService {
       this.logger.error('Error generating export URL:', error);
       throw new Error(`Failed to generate export URL: ${error.message}`);
     }
+  }  // Normalize game name by removing version info and common prefixes/suffixes
+  normalizeGameName(name) {
+    if (!name || typeof name !== 'string') return '';
+    
+    return name
+      .toLowerCase()
+      .trim()
+      // Remove version patterns like v1.0, version 1.2, ep 1, episode 1, etc.
+      .replace(/\s*\b(v|ver|version|ep|episode|chapter|ch|part|pt|release|r)\s*[\d.]+\w*\b/gi, '')
+      // Remove common prefixes
+      .replace(/^(the\s+|a\s+|an\s+)/i, '')
+      // Remove parentheses and brackets content (often contains version info)
+      .replace(/\s*[\[\(].*?[\]\)]\s*/g, ' ')
+      // Remove extra whitespace
+      .replace(/\s+/g, ' ')
+      .trim();
   }
-  async checkGameExists(gameUrl) {
+
+  async checkGameExists(gameUrl, gameName = null) {
     if (!gameUrl || typeof gameUrl !== 'string') {
       this.logger.warn('Invalid game URL provided for existence check');
       return null;
@@ -296,7 +418,31 @@ export class GoogleSheetsService {
 
     try {
       const games = await this.getAllGames();
-      return games.find(game => game.original_url === gameUrl) || null;
+      
+      // First, check by exact URL match
+      let existingGame = games.find(game => game.original_url === gameUrl);
+      if (existingGame) {
+        this.logger.info(`Found exact URL match for game: ${existingGame.game_name}`);
+        return { ...existingGame, matchType: 'url' };
+      }
+
+      // If no URL match and we have a game name, check by normalized name
+      if (gameName) {
+        const normalizedNewName = this.normalizeGameName(gameName);
+        if (normalizedNewName) {
+          existingGame = games.find(game => {
+            const normalizedExistingName = this.normalizeGameName(game.game_name);
+            return normalizedExistingName === normalizedNewName;
+          });
+          
+          if (existingGame) {
+            this.logger.info(`Found name match for game: "${gameName}" matches existing "${existingGame.game_name}"`);
+            return { ...existingGame, matchType: 'name' };
+          }
+        }
+      }
+
+      return null;
     } catch (error) {
       this.logger.error('Error checking if game exists:', error);
       return null;

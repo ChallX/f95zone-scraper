@@ -94,26 +94,10 @@ app.post('/api/scrape', async (req, res) => {
         error: 'Invalid domain',
         details: 'Please provide an F95Zone URL (f95zone.to)'
       });
-    }
-
-    logger.info(`Starting scrape for URL: ${url}`);
-    if (sessionId) sendProgress(sessionId, 1, 6, 'Validating URL and checking for duplicates...');    // Check if game already exists
-    try {
-      const existingGame = await googleSheetsService.checkGameExists(url);
-      if (existingGame) {
-        if (sessionId) errorProgress(sessionId, `Game already exists as #${existingGame.game_number}`);
-        return res.status(409).json({
-          error: 'Game already exists',
-          details: `This game is already in the database as #${existingGame.game_number}`,
-          existingGame
-        });
-      }
-    } catch (checkError) {
-      logger.warn('Could not check for existing game:', checkError.message);
-    }
+    }    logger.info(`Starting scrape for URL: ${url}`);
 
     // Step 1: Scrape the F95Zone page with retry logic
-    if (sessionId) sendProgress(sessionId, 2, 6, 'Scraping F95Zone page...');
+    if (sessionId) sendProgress(sessionId, 1, 6, 'Scraping F95Zone page...');
     let pageData;
     try {
       pageData = await scraperService.scrapePageWithRetry(url);
@@ -138,7 +122,7 @@ app.post('/api/scrape', async (req, res) => {
     }
 
     // Step 2: Extract structured data using AI
-    if (sessionId) sendProgress(sessionId, 3, 6, 'Extracting game data with AI...');
+    if (sessionId) sendProgress(sessionId, 2, 6, 'Extracting game data with AI...');
     let gameData;
     try {
       gameData = await aiService.extractGameData(pageData, url);
@@ -151,7 +135,23 @@ app.post('/api/scrape', async (req, res) => {
       });
     }
 
-    // Step 3: Get download sizes
+    // Step 3: Check if game already exists (by URL or name) AFTER getting game data
+    if (sessionId) sendProgress(sessionId, 3, 6, 'Checking for existing game...');
+    let existingGame;
+    let isUpdate = false;
+    try {
+      existingGame = await googleSheetsService.checkGameExists(url, gameData.game_name);
+      if (existingGame) {
+        isUpdate = true;
+        const matchTypeText = existingGame.matchType === 'url' ? 'URL' : 'game name';
+        logger.info(`Found existing game #${existingGame.game_number} by ${matchTypeText}: ${existingGame.game_name}`);
+        if (sessionId) sendProgress(sessionId, 3, 6, `Found existing game, will update #${existingGame.game_number}...`);
+      }
+    } catch (checkError) {
+      logger.warn('Could not check for existing game:', checkError.message);
+    }
+
+    // Step 4: Get download sizes
     if (sessionId) sendProgress(sessionId, 4, 6, 'Calculating download sizes...');
     let sizeData;
     try {
@@ -166,7 +166,7 @@ app.post('/api/scrape', async (req, res) => {
         individual_sizes: []
       };    }
 
-    // Step 4: Combine all data
+    // Step 5: Combine all data
     if (sessionId) sendProgress(sessionId, 5, 6, 'Preparing data for Google Sheets...');
     const finalData = {
       ...gameData,
@@ -175,12 +175,18 @@ app.post('/api/scrape', async (req, res) => {
       individual_sizes: sizeData.individual_sizes,
       extracted_date: new Date().toISOString()    };
 
-    // Step 5: Save to Google Sheets
-    if (sessionId) sendProgress(sessionId, 6, 6, 'Saving to Google Sheets...');
+    // Step 6: Save or Update in Google Sheets
+    if (sessionId) sendProgress(sessionId, 6, 6, isUpdate ? 'Updating existing game...' : 'Saving new game...');
     let gameNumber;
     try {
-      gameNumber = await googleSheetsService.addGameData(finalData);
-      logger.info(`Game saved to Google Sheets with number: ${gameNumber}`);    } catch (sheetError) {
+      if (isUpdate) {
+        gameNumber = await googleSheetsService.updateGameData(existingGame, finalData);
+        logger.info(`Game updated in Google Sheets with number: ${gameNumber}`);
+      } else {
+        gameNumber = await googleSheetsService.addGameData(finalData);
+        logger.info(`Game saved to Google Sheets with number: ${gameNumber}`);
+      }
+    } catch (sheetError) {
       logger.error('Failed to save to Google Sheets:', sheetError);
       if (sessionId) errorProgress(sessionId, `Failed to save to Google Sheets: ${sheetError.message}`);
       return res.status(500).json({ 
@@ -188,9 +194,7 @@ app.post('/api/scrape', async (req, res) => {
         details: sheetError.message,
         extractedData: finalData // Still return the extracted data
       });
-    }
-
-    // Step 6: Generate download URL
+    }    // Step 7: Generate download URL
     let downloadUrl;
     try {
       downloadUrl = await googleSheetsService.exportSheet();
@@ -203,7 +207,10 @@ app.post('/api/scrape', async (req, res) => {
       gameNumber,
       data: finalData,
       downloadUrl,
-      message: 'Game data extracted and saved successfully!'
+      isUpdate,
+      message: isUpdate ? 
+        `Game #${gameNumber} updated successfully!` : 
+        'Game data extracted and saved successfully!'
     };
 
     if (sessionId) completeProgress(sessionId, responseData);

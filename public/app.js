@@ -222,25 +222,14 @@ class F95Scraper {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ url, sessionId })
-            });
-
-            const data = await response.json();
+            });            const data = await response.json();
 
             // Handle immediate errors (before SSE processing)
             if (!data.success) {
-                if (response.status === 409) {
-                    // Game already exists - handle immediately
-                    isCompleted = true;
-                    closeEventSource();
-                    this.displayError(data.details);
-                    progressContainer.classList.add('hidden');
-                    progressContainer.classList.remove('show');
-                } else {
-                    // Other errors
-                    isCompleted = true;
-                    closeEventSource();
-                    throw new Error(data.error || 'Unknown error occurred');
-                }
+                // Handle errors
+                isCompleted = true;
+                closeEventSource();
+                throw new Error(data.error || 'Unknown error occurred');
             }
             // If successful, SSE will handle the completion
         } catch (error) {
@@ -273,14 +262,20 @@ class F95Scraper {
         if (progressText) {
             progressText.textContent = text;
         }
-    }
-
-    displayResult(data) {
+    }    displayResult(data) {
         const resultContainer = document.getElementById('resultContainer');
         const resultContent = document.getElementById('resultContent');
         // const downloadBtn = document.getElementById('downloadBtn');
         
-        resultContent.innerHTML = `
+        // Update the alert heading based on whether it was an update or new game
+        const alertHeading = resultContainer.querySelector('.alert-heading');
+        if (alertHeading) {
+            alertHeading.innerHTML = `
+                <i class="fas fa-check-circle me-2"></i>
+                ${data.isUpdate ? 'Game Updated!' : 'Extraction Complete!'}
+            `;
+        }
+          resultContent.innerHTML = `
             <div class="row">
                 <div class="col-md-3">
                 ${data.data.cover_image ? 
@@ -293,7 +288,7 @@ class F95Scraper {
                     <p><strong>Version:</strong> ${data.data.version}</p>
                     <p><strong>Developer:</strong> ${data.data.developer}</p>
                     <p><strong>Total Size:</strong> ${data.data.total_size_gb} GB</p>
-                    <p><strong>Game Number:</strong> #${data.gameNumber}</p>
+                    <p><strong>Game Number:</strong> #${data.gameNumber} ${data.isUpdate ? '<span class="badge bg-info">Updated</span>' : '<span class="badge bg-success">New</span>'}</p>
                     ${data.data.tags && data.data.tags.length > 0 ? 
                         `<div class="mb-2">${data.data.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>` : ''
                     }
