@@ -151,3 +151,62 @@ body {
     height: 140px;
     border-radius: 8px;
 }
+
+/* Status refresh button */
+.refresh-status-btn {
+    transition: all 0.3s ease;
+}
+
+.refresh-status-btn:hover {
+    transform: rotate(45deg);
+}
+
+.refresh-status-btn i.fa-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Status change notifications */
+.position-fixed {
+    position: fixed !important;
+}
+
+/* Enhanced status items */
+.status-item {
+    transition: all 0.3s ease;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.status-item:hover {
+    background-color: rgba(0,0,0,0.05);
+    transform: translateY(-2px);
+}
+
+.status-item i {
+    transition: all 0.3s ease;
+}
+
+.status-item:hover i {
+    transform: scale(1.1);
+}
+
+/* Alert animations */
+.alert.fade.show {
+    animation: slideInRight 0.5s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

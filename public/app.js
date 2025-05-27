@@ -1,14 +1,17 @@
 // F95Zone Scraper Frontend Application
 class F95Scraper {
     constructor() {
+        this.statusCheckInterval = null;
         this.init();
     }
 
     async init() {
         await this.checkStatus();
-        await this.loadGames();
-        this.setupEventListeners();
-    }    setupEventListeners() {
+        await this.loadGames();        this.setupEventListeners();
+        this.startStatusPolling();
+    }
+
+    setupEventListeners() {
         const form = document.getElementById('scrapeForm');
         form.addEventListener('submit', (e) => this.handleScrape(e));
 
@@ -23,6 +26,64 @@ class F95Scraper {
         if (refreshAfterScrapeBtn) {
             refreshAfterScrapeBtn.addEventListener('click', () => this.loadGames());
         }
+
+        // Add manual status refresh functionality
+        this.addStatusRefreshButton();
+    }
+
+    addStatusRefreshButton() {
+        const statusPanel = document.getElementById('statusPanel');
+        const parentCard = statusPanel.closest('.card');
+        if (parentCard) {
+            const cardTitle = parentCard.querySelector('.card-title');
+            if (cardTitle && !cardTitle.querySelector('.refresh-status-btn')) {
+                cardTitle.innerHTML += `
+                    <button class="btn btn-sm btn-outline-secondary ms-2 refresh-status-btn" type="button" title="Refresh Status">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                `;
+                
+                const refreshBtn = cardTitle.querySelector('.refresh-status-btn');
+                refreshBtn.addEventListener('click', () => this.refreshStatus());
+            }
+        }
+    }
+
+    async refreshStatus() {
+        const refreshBtn = document.querySelector('.refresh-status-btn');
+        if (refreshBtn) {
+            const icon = refreshBtn.querySelector('i');
+            icon.classList.add('fa-spin');
+            refreshBtn.disabled = true;
+        }
+        
+        try {
+            await this.checkStatus();
+        } finally {
+            if (refreshBtn) {
+                const icon = refreshBtn.querySelector('i');
+                icon.classList.remove('fa-spin');
+                refreshBtn.disabled = false;
+            }        }
+    }
+
+    startStatusPolling() {
+        // Check status every 30 seconds
+        this.statusCheckInterval = setInterval(() => {
+            this.checkStatus();
+        }, 30000);
+
+        // Stop polling when page is unloaded
+        window.addEventListener('beforeunload', () => {
+            this.stopStatusPolling();
+        });
+    }
+
+    stopStatusPolling() {
+        if (this.statusCheckInterval) {
+            clearInterval(this.statusCheckInterval);
+            this.statusCheckInterval = null;
+        }
     }
 
     async checkStatus() {
@@ -31,10 +92,18 @@ class F95Scraper {
             const data = await response.json();
             this.displayStatus(data);
         } catch (error) {
-            this.displayStatus({ status: 'ERROR', error: error.message });
-        }
-    }    displayStatus(status) {
+            this.displayStatus({ status: 'ERROR', error: error.message });        }
+    }
+
+    displayStatus(status) {
         const statusPanel = document.getElementById('statusPanel');
+        
+        // Check if F95Zone auth status has changed
+        const currentAuthStatus = this.lastAuthStatus;
+        let newAuthStatus = null;
+        if (status.status === 'OK' && status.services.f95zone_auth) {
+            newAuthStatus = status.services.f95zone_auth.status;
+        }
         
         if (status.status === 'OK') {
             // Determine F95Zone auth status display
@@ -121,8 +190,7 @@ class F95Scraper {
                     </div>
                 `;
             }
-            
-            // Show F95Zone auth info if configured but not authenticated
+              // Show F95Zone auth info if configured but not authenticated
             if (status.services.f95zone_auth && 
                 (status.services.f95zone_auth.status === 'not_authenticated' || 
                  status.services.f95zone_auth.status === 'session_expired')) {
@@ -133,6 +201,14 @@ class F95Scraper {
                     </div>
                 `;
             }
+
+            // Show notification if auth status changed
+            if (currentAuthStatus && newAuthStatus && currentAuthStatus !== newAuthStatus) {
+                this.showAuthStatusChangeNotification(currentAuthStatus, newAuthStatus);
+            }
+
+            // Store current auth status for next comparison
+            this.lastAuthStatus = newAuthStatus;
         } else {
             statusPanel.innerHTML = `
                 <div class="alert alert-danger">
@@ -141,7 +217,38 @@ class F95Scraper {
                 </div>
             `;
         }
-    }    async handleScrape(e) {
+    }
+
+    showAuthStatusChangeNotification(oldStatus, newStatus) {
+        // Create a temporary notification
+        const notification = document.createElement('div');
+        notification.className = 'alert alert-success alert-dismissible fade show position-fixed';
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
+        
+        const statusText = {
+            'not_authenticated': 'Ready to Login',
+            'authenticated': 'Authenticated',
+            'session_expired': 'Session Expired',
+            'error': 'Error'
+        };
+
+        notification.innerHTML = `
+            <i class="fas fa-info-circle me-2"></i>
+            F95Zone status changed: ${statusText[oldStatus] || oldStatus} → ${statusText[newStatus] || newStatus}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+
+        document.body.appendChild(notification);
+
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    async handleScrape(e) {
         e.preventDefault();
 
         const url = document.getElementById('gameUrl').value;
@@ -185,8 +292,7 @@ class F95Scraper {
                     if (data.status === 'connected') {
                         this.updateProgress(0, 'Connecting to server...');
                     } else if (data.status === 'progress') {
-                        this.updateProgress(data.progress, data.message);
-                    } else if (data.status === 'completed') {
+                        this.updateProgress(data.progress, data.message);                    } else if (data.status === 'completed') {
                         isCompleted = true;
                         this.updateProgress(100, 'Extraction complete!');
                         setTimeout(() => {
@@ -201,6 +307,15 @@ class F95Scraper {
                         progressContainer.classList.add('hidden');
                         progressContainer.classList.remove('show');
                         closeEventSource();
+                    }
+                    
+                    // Refresh status if authentication-related messages are detected
+                    if (data.message && (
+                        data.message.toLowerCase().includes('authentication') ||
+                        data.message.toLowerCase().includes('login') ||
+                        data.message.toLowerCase().includes('authenticating')
+                    )) {
+                        this.checkStatus();
                     }
                 } catch (parseError) {
                     console.error('Error parsing SSE data:', parseError);
@@ -242,9 +357,10 @@ class F95Scraper {
         } finally {
             // Re-enable button
             scrapeBtn.disabled = false;
-            scrapeBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Extract Game Data';
-        }
-    }    updateProgress(percent, text) {
+            scrapeBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Extract Game Data';        }
+    }
+
+    updateProgress(percent, text) {
         const progressBar = document.querySelector('.progress-bar');
         const progressContainer = document.querySelector('.progress[role="progressbar"]');
         const progressText = document.getElementById('progressText');
@@ -260,9 +376,10 @@ class F95Scraper {
             progressContainer.setAttribute('aria-valuenow', percent);
         }
         if (progressText) {
-            progressText.textContent = text;
-        }
-    }    displayResult(data) {
+            progressText.textContent = text;        }
+    }
+
+    displayResult(data) {
         const resultContainer = document.getElementById('resultContainer');
         const resultContent = document.getElementById('resultContent');
         // const downloadBtn = document.getElementById('downloadBtn');
@@ -295,17 +412,18 @@ class F95Scraper {
                     <p class="text-muted small mb-0">${data.data.description}</p>
                 </div>
             </div>
-        `;
-
-        // if (data.downloadUrl) {
+        `;        // if (data.downloadUrl) {
         //     downloadBtn.href = data.downloadUrl;
         // }
 
         resultContainer.classList.remove('hidden');
         resultContainer.classList.add('show');
         
-        // Refresh games list
-        setTimeout(() => this.loadGames(), 1000);
+        // Refresh games list and status after successful scrape
+        setTimeout(() => {
+            this.loadGames();
+            this.checkStatus(); // Refresh status to show any authentication changes
+        }, 1000);
     }
 
     displayError(error) {
