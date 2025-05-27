@@ -213,7 +213,7 @@ class F95Scraper {
     displayResult(data) {
         const resultContainer = document.getElementById('resultContainer');
         const resultContent = document.getElementById('resultContent');
-        const downloadBtn = document.getElementById('downloadBtn');
+        // const downloadBtn = document.getElementById('downloadBtn');
         
         resultContent.innerHTML = `
             <div class="row">
@@ -232,15 +232,15 @@ class F95Scraper {
                     ${data.data.tags && data.data.tags.length > 0 ? 
                         `<div class="mb-2">${data.data.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>` : ''
                     }
-                    <p class="text-muted small">${data.data.description}</p>
+                    <p class="text-muted small mb-0">${data.data.description}</p>
                 </div>
             </div>
         `;
-        
-        if (data.downloadUrl) {
-            downloadBtn.href = data.downloadUrl;
-        }
-        
+
+        // if (data.downloadUrl) {
+        //     downloadBtn.href = data.downloadUrl;
+        // }
+
         resultContainer.classList.remove('hidden');
         resultContainer.classList.add('show');
         
@@ -364,13 +364,30 @@ class F95Scraper {
         gamesContainer.innerHTML = `
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="mb-0">Total Games: ${games.length}</h6>
-                <a href="/api/download" target="_blank" class="btn btn-success btn-sm">
+                <a id="download-sheet" href="/api/download" class="btn btn-success btn-sm">
                     <i class="fas fa-file-excel me-1"></i>
                     Download Excel
                 </a>
             </div>
             ${gamesHtml}
         `;
+
+        const downloadSheetBtn = document.getElementById('download-sheet');
+
+        const downloadLink = async() => {
+            const response = await fetch('/api/download');
+            let data = "";
+
+            if (response.ok) {
+                const json = await response.json();
+                data = json.downloadUrl.toString();
+            }
+            return data;
+        }
+
+        downloadLink().then(url => {
+            downloadSheetBtn.href = url;
+        });
     }
 }
 
