@@ -2,10 +2,105 @@
 class F95Scraper {
     constructor() {
         this.statusCheckInterval = null;
+        this.lazyLoadObserver = null;
         this.init();
     }
 
+    // Initialize Intersection Observer for lazy loading
+    initLazyLoading() {
+        if ('IntersectionObserver' in window) {
+            this.lazyLoadObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        const src = img.dataset.src;
+                        
+                        if (src) {
+                            // Add loading state
+                            img.classList.add('lazy-loading-active');
+                            
+                            // Create a new image to test loading
+                            const testImg = new Image();
+                            
+                            testImg.onload = () => {
+                                img.src = src;
+                                img.classList.remove('lazy-loading', 'lazy-loading-active');
+                                img.classList.add('lazy-loaded');
+                                // Add fade-in effect
+                                img.style.opacity = '0';
+                                img.style.transition = 'opacity 0.3s ease-in-out';
+                                setTimeout(() => { img.style.opacity = '1'; }, 10);
+                                observer.unobserve(img);
+                            };
+                            
+                            testImg.onerror = () => {
+                                img.classList.remove('lazy-loading', 'lazy-loading-active');
+                                img.classList.add('lazy-error');
+                                img.parentNode.innerHTML = `
+                                    <div class="cover-placeholder bg-light d-flex align-items-center justify-content-center" style="${img.style.cssText}">
+                                        <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
+                                    </div>
+                                `;
+                                observer.unobserve(img);
+                            };
+                            
+                            testImg.src = src;
+                        }
+                    }
+                });
+            }, {
+                // Load images when they're 50px away from viewport
+                rootMargin: '50px',
+                threshold: 0.1
+            });
+        }
+    }
+
+    // Helper function to create lazy-loaded image HTML
+    createLazyImage(src, alt, className = '', style = '') {
+        if (!src) {
+            return `<div class="cover-placeholder bg-light d-flex align-items-center justify-content-center ${className}" ${style ? `style="${style}"` : ''}><i class="fas fa-image fa-2x text-muted"></i></div>`;
+        }
+
+        return `<img data-src="${src}" alt="${alt}" class="lazy-loading ${className}" ${style ? `style="${style}"` : ''} />`;
+    }
+
+    // Observe images for lazy loading
+    observeLazyImages(container) {
+        if (this.lazyLoadObserver) {
+            const lazyImages = container.querySelectorAll('.lazy-loading');
+            lazyImages.forEach(img => {
+                this.lazyLoadObserver.observe(img);
+            });
+        } else {
+            // Fallback for browsers without Intersection Observer support
+            this.loadAllImagesImmediately(container);
+        }
+    }
+
+    // Fallback method to load all images immediately
+    loadAllImagesImmediately(container) {
+        const lazyImages = container.querySelectorAll('.lazy-loading');
+        lazyImages.forEach(img => {
+            const src = img.dataset.src;
+            if (src) {
+                img.src = src;
+                img.classList.remove('lazy-loading');
+                img.classList.add('lazy-loaded');
+            }
+        });
+    }
+
+    // Clean up observer when needed
+    destroyLazyLoading() {
+        if (this.lazyLoadObserver) {
+            this.lazyLoadObserver.disconnect();
+            this.lazyLoadObserver = null;
+        }
+    }
+
     async init() {
+        this.initLazyLoading();
         await this.checkStatus();
         await this.loadGames();        this.setupEventListeners();
         this.startStatusPolling();
@@ -377,9 +472,7 @@ class F95Scraper {
         }
         if (progressText) {
             progressText.textContent = text;        }
-    }
-
-    displayResult(data) {
+    }    displayResult(data) {
         const resultContainer = document.getElementById('resultContainer');
         const resultContent = document.getElementById('resultContent');
         // const downloadBtn = document.getElementById('downloadBtn');
@@ -395,10 +488,7 @@ class F95Scraper {
           resultContent.innerHTML = `
             <div class="row">
                 <div class="col-md-3">
-                ${data.data.cover_image ? 
-                        `<img src="${data.data.cover_image}" alt="Game Cover" class="cover-image img-fluid">` :
-                        '<div class="cover-placeholder bg-light d-flex align-items-center justify-content-center"><i class="fas fa-image fa-2x text-muted"></i></div>'
-                    }
+                    ${this.createLazyImage(data.data.cover_image, 'Game Cover', 'cover-image img-fluid')}
                 </div>
                 <div class="col-md-9">
                     <h5 class="text-primary">${data.data.game_name}</h5>
@@ -412,7 +502,10 @@ class F95Scraper {
                     <p class="text-muted small mb-0">${data.data.description}</p>
                 </div>
             </div>
-        `;        // if (data.downloadUrl) {
+        `;
+        
+        // Observe lazy images in the result content
+        this.observeLazyImages(resultContent);// if (data.downloadUrl) {
         //     downloadBtn.href = data.downloadUrl;
         // }
 
@@ -481,17 +574,18 @@ class F95Scraper {
         
         // Sort games by game number (newest first)
         games.sort((a, b) => (b.game_number || 0) - (a.game_number || 0));
-        
-        const gamesHtml = games.map(game => `
+          const gamesHtml = games.map(game => `
             <div class="game-card">
                 <div class="card">
                     <div class="card-body">
                         <div class="row">
                             <div class="col-auto">
-                                ${game.cover_image ? 
-                                    `<img src="${game.cover_image}" alt="${game.game_name}" class="cover-image">` :
-                                    '<div class="cover-placeholder bg-light d-flex align-items-center justify-content-center" style="width: 100px; height: 140px; border-radius: 8px;"><i class="fas fa-image fa-2x text-muted"></i></div>'
-                                }
+                                ${this.createLazyImage(
+                                    game.cover_image, 
+                                    game.game_name || 'Unknown Game', 
+                                    'cover-image',
+                                    'width: 100px; height: 140px; border-radius: 8px;'
+                                )}
                             </div>
                             <div class="col">
                                 <div class="d-flex justify-content-between align-items-start">
@@ -538,8 +632,7 @@ class F95Scraper {
                 </div>
             </div>
         `).join('');
-        
-        gamesContainer.innerHTML = `
+          gamesContainer.innerHTML = `
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="mb-0">Total Games: ${games.length}</h6>
                 <a id="download-sheet" href="/api/download" class="btn btn-success btn-sm">
@@ -549,6 +642,9 @@ class F95Scraper {
             </div>
             ${gamesHtml}
         `;
+
+        // Initialize lazy loading for the games container
+        this.observeLazyImages(gamesContainer);
 
         const downloadSheetBtn = document.getElementById('download-sheet');
 

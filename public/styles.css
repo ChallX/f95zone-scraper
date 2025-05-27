@@ -1,5 +1,65 @@
 /* F95Zone Scraper Styles */
 
+/* Lazy Loading Styles */
+.lazy-loading {
+    background-color: #f8f9fa;
+    background-image: linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
+                      linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
+                      linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
+                      linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    animation: lazy-shimmer 1.5s ease-in-out infinite;
+    min-height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lazy-loading-active {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: lazy-loading-pulse 1.5s ease-in-out infinite;
+}
+
+.lazy-loaded {
+    opacity: 1;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.lazy-error {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    min-height: 140px;
+}
+
+@keyframes lazy-shimmer {
+    0% { background-position: 0 0, 0 10px, 10px -10px, -10px 0px; }
+    100% { background-position: 20px 20px, 20px 30px, 30px 10px, 10px 20px; }
+}
+
+@keyframes lazy-loading-pulse {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+/* Cover image specific styles */
+.cover-image.lazy-loading {
+    width: 100px;
+    height: 140px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.cover-placeholder {
+    min-height: 140px;
+    border-radius: 8px;
+}
+
+/* .cover-placeholder:hover {
+    background-color: #e9ecef !important;
+} */
+
 body {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
@@ -108,8 +168,7 @@ body {
 }
 
 .cover-image {
-    width: 100px;
-    height: 140px;
+    height: 100%;
     object-fit: cover;
     border-radius: 8px;
 }
