@@ -448,4 +448,76 @@ export class GoogleSheetsService {
       return null;
     }
   }
+
+        async deleteGame(gameNumber) {
+      try {
+          this.logger.info(`Attempting to delete game #${gameNumber}`);
+          
+          // Get all data to find the row and renumber games
+          const response = await this.sheets.spreadsheets.values.get({
+              spreadsheetId: this.spreadsheetId,
+              range: `${this.sheetName}!A:N`, // Get all data
+          });
+
+          const rows = response.data.values;
+          if (!rows || rows.length <= 1) {
+              throw new Error('No data found in spreadsheet');
+          }
+
+          const headers = rows[0];
+          const dataRows = rows.slice(1);
+
+          // Find the row with the game number to delete
+          let rowToDeleteIndex = -1;
+          for (let i = 0; i < dataRows.length; i++) {
+              if (dataRows[i][0] === gameNumber.toString()) {
+                  rowToDeleteIndex = i;
+                  break;
+              }
+          }
+
+          if (rowToDeleteIndex === -1) {
+              throw new Error(`Game #${gameNumber} not found`);
+          }
+
+          // Remove the row from our data array
+          const gameName = dataRows[rowToDeleteIndex][1] || 'Unknown';
+          dataRows.splice(rowToDeleteIndex, 1);
+
+          // Renumber all remaining games
+          for (let i = 0; i < dataRows.length; i++) {
+              dataRows[i][0] = (i + 1).toString(); // New game number (1-based)
+          }
+
+          // Clear the entire data range and rewrite with renumbered data
+          await this.sheets.spreadsheets.values.clear({
+              spreadsheetId: this.spreadsheetId,
+              range: `${this.sheetName}!A2:N` // Clear all data but keep headers
+          });
+
+          // Write the renumbered data back
+          if (dataRows.length > 0) {
+              await this.sheets.spreadsheets.values.update({
+                  spreadsheetId: this.spreadsheetId,
+                  range: `${this.sheetName}!A2:N`,
+                  valueInputOption: 'RAW',
+                  resource: {
+                      values: dataRows
+                  }
+              });
+          }
+
+          this.logger.info(`Successfully deleted "${gameName}" (was #${gameNumber}) and renumbered ${dataRows.length} remaining games`);
+          return { 
+              success: true, 
+              deletedGameName: gameName,
+              originalNumber: gameNumber,
+              remainingGames: dataRows.length 
+          };
+
+      } catch (error) {
+          this.logger.error(`Error deleting game #${gameNumber}:`, error.message);
+          throw error;
+      }
+    }
 }

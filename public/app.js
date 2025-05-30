@@ -518,7 +518,6 @@ class F95Scraper {
             this.checkStatus(); // Refresh status to show any authentication changes
         }, 1000);
     }
-
     displayError(error) {
         const errorContainer = document.getElementById('errorContainer');
         const errorContent = document.getElementById('errorContent');
@@ -530,6 +529,82 @@ class F95Scraper {
         
         errorContainer.classList.remove('hidden');
         errorContainer.classList.add('show');
+    }
+
+    async handleDeleteGame(e) {
+        e.preventDefault();
+        
+        const button = e.target.closest('.delete-game-btn');
+        const gameNumber = button.getAttribute('data-game-number');
+        const gameName = button.getAttribute('data-game-name');
+        
+        // Show confirmation dialog
+        const confirmed = confirm(`Are you sure you want to delete "${gameName}" (Game #${gameNumber})?\n\nThis action cannot be undone.`);
+        
+        if (!confirmed) {
+            return;
+        }
+        
+        // Disable button and show loading state
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Deleting...';
+        
+        try {
+            const response = await fetch(`/api/games/${gameNumber}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Remove the game card from the UI
+                const gameCard = button.closest('.game-card');
+                gameCard.style.transition = 'all 0.3s ease';
+                gameCard.style.opacity = '0';
+                gameCard.style.transform = 'translateX(-100%)';
+                
+                setTimeout(() => {
+                    gameCard.remove();
+                    // Refresh the games list to update counts
+                    this.loadGames();
+                }, 300);
+                
+                // Show success message
+                this.showDeleteSuccessMessage(gameName, gameNumber);
+            } else {
+                throw new Error(data.error || 'Failed to delete game');
+            }
+        } catch (error) {
+            console.error('Error deleting game:', error);
+            
+            // Re-enable button and show error
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-trash me-1"></i>Delete';
+            
+            alert(`Failed to delete game: ${error.message}`);
+        }
+    }
+
+    showDeleteSuccessMessage(gameName, gameNumber) {
+        // Create a temporary success message
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 1050; max-width: 300px;';
+        alertDiv.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            <strong>Game Deleted!</strong><br>
+            "${gameName}" (Game #${gameNumber}) has been removed.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
     }
 
     async loadGames() {
@@ -608,6 +683,10 @@ class F95Scraper {
                                             <i class="fas fa-external-link-alt me-1"></i>
                                             View
                                         </a>
+                                        <button class="btn btn-danger btn-sm mb-2 delete-game-btn" data-game-number="${game.game_number}" data-game-name="${game.game_name || 'Unknown Game'}">
+                                            <i class="fas fa-trash me-1"></i>
+                                            Delete
+                                        </button>
                                         ${game.download_links && game.download_links.length > 0 ? 
                                             `<div class="dropdown">
                                                 <button class="btn btn-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -642,9 +721,14 @@ class F95Scraper {
             </div>
             ${gamesHtml}
         `;
-
         // Initialize lazy loading for the games container
         this.observeLazyImages(gamesContainer);
+
+        // Add event listeners for delete buttons
+        const deleteButtons = gamesContainer.querySelectorAll('.delete-game-btn');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', (e) => this.handleDeleteGame(e));
+        });
 
         const downloadSheetBtn = document.getElementById('download-sheet');
 

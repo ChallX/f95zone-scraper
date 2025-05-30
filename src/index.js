@@ -317,6 +317,39 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// Delete game endpoint
+app.delete('/api/games/:gameNumber', async (req, res) => {
+  try {
+    const gameNumber = req.params.gameNumber;
+    
+    // Validate game number
+    if (!gameNumber || isNaN(gameNumber)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid game number' 
+      });
+    }
+
+    logger.info(`Delete request received for game number: ${gameNumber}`);
+    
+    // Call the delete method
+    const result = await googleSheetsService.deleteGame(gameNumber);
+    
+    res.json({ 
+      success: true, 
+      message: `Game ${gameNumber} deletion requested`,
+      gameNumber: parseInt(gameNumber)
+    });
+    
+  } catch (error) {
+    logger.error('Error deleting game:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+
 // Progress tracking for SSE
 const progressSessions = new Map();
 
