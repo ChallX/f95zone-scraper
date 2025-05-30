@@ -2,356 +2,172 @@
 
 A powerful automation tool that extracts game data from F95Zone using AI and saves it to Google Sheets with automatic download size detection.
 
-## Features
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/ismaeilalrewany/f95zone-scraper)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node.js-%3E%3D%2018.0.0-brightgreen.svg)](https://nodejs.org/)
+
+## ✨ Features
 
 - 🤖 **AI-Powered Extraction**: Uses Google Gemini 2.0 Flash to extract structured game data
 - 🕷️ **Advanced Web Scraping**: Puppeteer-based scraping with anti-detection measures
 - 📊 **Google Sheets Integration**: Automatically saves data to spreadsheets
 - 📏 **Download Size Detection**: Calculates file sizes from multiple download providers
-- 🎨 **Beautiful Web Interface**: Modern, responsive UI for easy operation (included in repo)
+- 🎨 **Beautiful Web Interface**: Modern, responsive UI for easy operation
 - 📱 **Real-time Progress**: Live updates during the scraping process
 - 🔄 **Duplicate Detection**: Prevents duplicate entries
 - 📈 **Comprehensive Logging**: Detailed logs for debugging and monitoring
+- 🧪 **Comprehensive Testing**: Full test suite for reliability
 - 📄 **Open Source**: MIT licensed for free use and modification
 
-## Quick Start
+## 🚀 Quick Start
 
-> **Note**: This project now includes the complete web interface in version control. The `public/` directory containing the UI files is no longer ignored by Git.
+### Prerequisites
 
-### 1. Install Dependencies
+- Node.js 18+ installed
+- Google Gemini API key (free)
+- Google Cloud Service Account (for Sheets integration)
+- Optional: F95Zone account for enhanced access
 
-```bash
-npm install
-```
+### Installation
 
-### 2. Configure Environment Variables
-
-Copy the example environment file and update with your API keys:
-
-```bash
-# Copy the example environment file
-copy .env.example .env
-```
-
-Edit `.env` with your actual credentials:
-
-```env
-# Server Configuration
-PORT=3000
-NODE_ENV=development
-LOG_LEVEL=info
-
-# Google Gemini API Key (Required for AI data extraction)
-GOOGLE_GEMINI_API_KEY=your-google-gemini-api-key-here
-
-# F95Zone Authentication (Optional - for accessing protected content)
-F95ZONE_USERNAME=your-f95zone-username
-F95ZONE_PASSWORD=your-f95zone-password
-
-# Google Sheets Configuration (Required for saving data)
-GOOGLE_SHEET_ID=your-google-sheet-id-here
-GOOGLE_PROJECT_ID=your-google-project-id
-GOOGLE_PRIVATE_KEY_ID=your-private-key-id
-GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nyour-private-key-content-here\n-----END PRIVATE KEY-----\n"
-GOOGLE_CLIENT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
-GOOGLE_CLIENT_ID=your-client-id
-GOOGLE_SERVICE_ACCOUNT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
-GOOGLE_SHEET_NAME=sheet-name-here
-
-# Optional: Scraping Configuration
-SCRAPE_DELAY=2000
-MAX_RETRIES=3
-TIMEOUT=30000
-```
-
-### 3. Run the Application
-
-```bash
-npm start
-```
-
-Visit `http://localhost:3000` in your browser.
-
-## API Keys and Authentication Setup
-
-### Google Gemini API Key
-
-1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey)
-2. Create a new API key
-3. Copy the key and add it to your `.env` file
-
-**Cost**: **FREE** with generous quotas:
-- 15 requests per minute
-- 1 million tokens per month
-- No credit card required
-
-### F95Zone Authentication (Optional)
-
-To access protected content like download links and complete game information, you can configure F95Zone authentication:
-
-1. **Create F95Zone Account** (if you don't have one):
-   - Go to [F95Zone Registration](https://f95zone.to/register/)
-   - Create a free account
-   - Verify your email address
-
-2. **Add Credentials to Environment**:
-   ```env
-   F95ZONE_USERNAME=your-username-here
-   F95ZONE_PASSWORD=your-password-here
+1. **Clone and install dependencies**
+   ```bash
+   git clone <repository-url>
+   cd f95zone-scraper
+   npm install
    ```
 
-3. **Benefits of Authentication**:
-   - ✅ Access to download links (often hidden behind spoiler tags)
-   - ✅ Complete file size information
-   - ✅ Access to member-only content
-   - ✅ Reduced rate limiting
-   - ✅ Better scraping reliability
+2. **Configure environment variables**
+   ```bash
+   copy .env.example .env
+   ```
+   Edit `.env` with your API keys and credentials.
 
-4. **Security Notes**:
-   - Credentials are stored locally in your `.env` file
-   - Authentication is handled automatically during scraping
-   - Session is maintained across multiple scraping requests
-   - No credentials are sent to external services
-
-**Note**: Authentication is optional. The scraper will work without it, but some content may be restricted or incomplete.
-
-### Google Sheets Setup
-
-#### Method 1: Service Account (Recommended)
-
-1. **Create Google Cloud Project**:
-   - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Create a new project or select existing one
-
-2. **Enable Google Sheets API**:
-   - Go to "APIs & Services" → "Library"
-   - Search for "Google Sheets API"
-   - Click "Enable"
-
-3. **Create Service Account**:
-   - Go to "APIs & Services" → "Credentials"
-   - Click "Create Credentials" → "Service Account"
-   - Fill in the details and create
-
-4. **Generate Private Key**:
-   - Click on the created service account
-   - Go to "Keys" tab
-   - Click "Add Key" → "Create New Key" → "JSON"
-   - Download the JSON file
-
-5. **Extract Credentials**:
-   From the downloaded JSON file, copy these values to your `.env`:
-   ```env
-   GOOGLE_PROJECT_ID=your-project-id
-   GOOGLE_PRIVATE_KEY_ID=your-private-key-id
-   GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY_HERE\n-----END PRIVATE KEY-----"
-   GOOGLE_CLIENT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
-   GOOGLE_CLIENT_ID=your-client-id
-   GOOGLE_SERVICE_ACCOUNT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
+3. **Start the application**
+   ```bash
+   npm start
    ```
 
-6. **Create Google Sheet**:
-   - Create a new Google Sheet
-   - Copy the Sheet ID from the URL: `https://docs.google.com/spreadsheets/d/SHEET_ID/edit`
-   - Add the Sheet ID to your `.env` file
-   - Share the sheet with your service account email (give Editor access)
+4. **Open your browser**
+   Navigate to `http://localhost:3000`
 
-## Usage
+## 📚 Documentation
 
-### Web Interface
+| Document | Description |
+|----------|-------------|
+| [Setup Guide](docs/SETUP.md) | Detailed installation and configuration |
+| [API Documentation](docs/API.md) | REST API endpoints and usage |
+| [Authentication Guide](docs/AUTHENTICATION.md) | F95Zone and Google authentication setup |
+| [Configuration Guide](docs/CONFIGURATION.md) | Environment variables and options |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and solutions |
+| [Development Guide](docs/DEVELOPMENT.md) | Contributing and development setup |
+| [Testing Guide](docs/TESTING.md) | Running and writing tests |
+| [Roadmap](docs/ROADMAP.md) | Future features and version history |
 
-1. **Start the server**: `npm start`
-2. **Open browser**: Navigate to `http://localhost:3000`
-3. **Check status**: Ensure all services show "operational"
-4. **Scrape games**: 
-   - Enter F95Zone game URL
-   - Click "Extract Game Data"
-   - Wait for processing to complete
-   - Download the updated Excel file
+## 🏗️ Architecture
 
-### API Endpoints
-
-- `POST /api/scrape` - Scrape a single game
-- `GET /api/games` - Get all games from database
-- `GET /api/download` - Download Excel file
-- `GET /api/health` - Check system status
-
-### Example API Usage
-
-```javascript
-// Scrape a game
-const response = await fetch('/api/scrape', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ 
-    url: 'https://f95zone.to/threads/game-name.123456/' 
-  })
-});
+```
+f95zone-scraper/
+├── src/
+│   ├── index.js              # Main server
+│   ├── services/             # Core business logic
+│   └── utils/                # Helper utilities
+├── public/                   # Web interface
+├── tests/                    # Test suites
+├── docs/                     # Documentation
+└── logs/                     # Application logs
 ```
 
-## Configuration Options
+## 🧪 Testing
 
-### Environment Variables
+Run the comprehensive test suite:
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `PORT` | No | Server port (default: 3000) |
-| `NODE_ENV` | No | Environment (development/production) |
-| `LOG_LEVEL` | No | Logging level (debug/info/warn/error) |
-| `GOOGLE_GEMINI_API_KEY` | Yes | Google Gemini API key for AI extraction |
-| `F95ZONE_USERNAME` | No | F95Zone username for authentication |
-| `F95ZONE_PASSWORD` | No | F95Zone password for authentication |
-| `GOOGLE_SHEET_ID` | Yes | Google Sheets document ID |
-| `GOOGLE_PROJECT_ID` | Yes | Google Cloud project ID |
-| `GOOGLE_PRIVATE_KEY_ID` | Yes | Service account private key ID |
-| `GOOGLE_PRIVATE_KEY` | Yes | Service account private key |
-| `GOOGLE_CLIENT_EMAIL` | Yes | Service account email |
-| `GOOGLE_CLIENT_ID` | Yes | Service account client ID |
-| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Yes | Service account email (alias) |
-| `GOOGLE_SHEET_NAME` | No | Sheet name (default: "Sheet1") |
-| `SCRAPE_DELAY` | No | Delay between requests in ms (default: 2000) |
-| `MAX_RETRIES` | No | Maximum retry attempts (default: 3) |
-| `TIMEOUT` | No | Request timeout in ms (default: 30000) |
+```bash
+npm test
+```
 
-### Supported Download Providers
+Tests cover all major functionality including web scraping, AI extraction, Google Sheets integration, and error handling.
+
+## 📊 Supported Download Providers
 
 - MEGA
-- Google Drive
+- Google Drive  
 - MediaFire
 - GoFile
 - PixelDrain
 - WorkUpload
 - UploadHaven
 
-## Data Structure
+## 🔧 Configuration
 
-The scraper extracts and stores the following data for each game:
+Essential environment variables:
 
-```json
-{
-  "game_number": 1,
-  "game_name": "Game Title",
-  "version": "v1.0",
-  "developer": "Developer Name",
-  "release_date": "2024-01-01",
-  "original_url": "https://f95zone.to/threads/...",
-  "cover_image": "https://image-url.jpg",
-  "description": "Game description...",
-  "tags": ["tag1", "tag2"],
-  "total_size_gb": "2.50",
-  "total_size_bytes": 2684354560,
-  "download_links": [
-    {
-      "provider": "MEGA",
-      "url": "https://mega.nz/...",
-      "platform": "PC",
-      "version": "v1.0"
-    }
-  ],
-  "individual_sizes": [
-    {
-      "provider": "MEGA",
-      "platform": "PC",
-      "size_gb": "2.50",
-      "size_bytes": 2684354560
-    }
-  ],
-  "extracted_date": "2024-01-01T00:00:00.000Z"
-}
+```env
+# Required
+GOOGLE_GEMINI_API_KEY=your-gemini-api-key
+GOOGLE_SHEET_ID=your-sheet-id
+GOOGLE_SERVICE_ACCOUNT_EMAIL=your-service-account@project.iam.gserviceaccount.com
+GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----..."
+
+# Optional
+F95ZONE_USERNAME=your-username
+F95ZONE_PASSWORD=your-password
+PORT=3000
 ```
 
-## Troubleshooting
+See [Configuration Guide](docs/CONFIGURATION.md) for complete details.
 
-### Common Issues
+## 📈 Version 1.0.0
 
-1. **"Google Gemini API key not configured"**
-   - Ensure `GOOGLE_GEMINI_API_KEY` is set in `.env`
-   - Verify the API key is valid
+Current stable release with core functionality:
+- ✅ AI-powered data extraction
+- ✅ Google Sheets integration
+- ✅ Web interface
+- ✅ F95Zone authentication
+- ✅ Download size detection
+- ✅ Comprehensive testing
 
-2. **"Google Sheets not configured"**
-   - Check all Google credentials in `.env`
-   - Ensure the service account has access to the sheet
-   - Verify the sheet ID is correct
+## 🚧 Roadmap v1.6.2
 
-3. **"Failed to scrape page"**
-   - Check if the F95Zone URL is accessible
-   - Verify the URL format is correct
-   - Some pages may require login (not supported)
+Planned improvements:
+- [ ] Distribute files in proper folder structure
+- [ ] Pagination for games list
+- [ ] Fix game size detection (currently shows 0.00 GB)
+- [ ] Fix MEGA/WorkUpload download buttons
+- [ ] Automatic retry for broken data
+- [ ] Test suite improvements
+- [ ] F95Zone color scheme integration
+- [ ] CI/CD pipeline
 
-4. **"Cannot get download sizes"**
-   - Some download providers block HEAD requests
-   - The scraper will continue without size data
+See [Roadmap](docs/ROADMAP.md) for detailed planning.
 
-### Debug Mode
+## ⚖️ Legal & Ethics
 
-Run with debug logging:
+- Respects F95Zone Terms of Service
+- Built-in rate limiting to avoid server overload
+- Extracts only publicly available information
+- For educational and personal use
 
-```bash
-set LOG_LEVEL=debug && npm start
-```
+## 🤝 Future Contributing
 
-### Logs
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests: `npm test`
+<!-- 5. Submit a pull request -->
 
-Check the logs directory for detailed error information:
-- `logs/app.log` - General application logs
-- `logs/error.log` - Error-only logs
+See [Development Guide](docs/DEVELOPMENT.md) for detailed instructions.
 
-## Development
+## 📄 License
 
-### Project Structure
+MIT License - see [LICENSE](LICENSE) for details.
 
-```plaintext
-f95zone-scraper/
-├── src/
-│   ├── index.js              # Main server file
-│   ├── services/
-│   │   ├── scraperService.js # Web scraping logic
-│   │   ├── aiService.js      # AI data extraction
-│   │   └── googleSheetsService.js # Google Sheets integration
-│   └── utils/
-│       └── logger.js         # Logging utility
-├── public/                   # Web UI (included in version control)
-│   ├── index.html           # Web interface
-│   ├── app.js              # Frontend JavaScript
-│   └── styles.css          # UI styling
-├── logs/                   # Application logs
-├── .env                   # Environment variables
-├── LICENSE                # MIT License
-└── package.json          # Dependencies and scripts
-```
+## 🆘 Support
 
-### Available Scripts
-
-```bash
-npm start       # Start the production server
-npm run dev     # Start with file watching (development)
-npm test        # Run tests
-```
-
-### Adding New Features
-
-1. **New Download Provider**: Update `scraperService.js`
-2. **Additional Data Fields**: Modify AI prompt in `aiService.js`
-3. **Custom UI**: Edit `public/index.html` and `public/app.js`
-
-## Legal and Ethical Considerations
-
-- ⚖️ **Respect Terms of Service**: Ensure compliance with F95Zone's ToS
-- 🚫 **Rate Limiting**: Built-in delays to avoid overwhelming servers
-- 🔒 **Content Filtering**: AI naturally filters inappropriate content in structured extraction
-- 📋 **Data Usage**: Only extract publicly available information
-
-## License
-
-MIT License - See LICENSE file for details.
-
-## Support
-
-For issues and questions:
-1. Check the troubleshooting section
-2. Review the logs for error details
-3. Ensure all API keys are properly configured
+- 📖 Check the [Troubleshooting Guide](docs/TROUBLESHOOTING.md)
+- 🐛 Report issues on GitHub
+- 📧 Contact: [ismailalrewany332@gmail.com]
 
 ---
 
-**Note**: This tool is for educational and personal use. Always respect website terms of service and applicable laws.
+**⚠️ Disclaimer**: This tool is for educational and personal use. Always respect website terms of service and applicable laws.
