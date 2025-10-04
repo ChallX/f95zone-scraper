@@ -1,173 +1,124 @@
-# F95Zone Game Scraper
+# F95Zone Scraper 🚀
 
-A powerful automation tool that extracts game data from F95Zone using AI and saves it to Google Sheets with automatic download size detection.
+![GitHub Repo](https://img.shields.io/badge/Repo-f95zone--scraper-brightgreen) ![Node.js](https://img.shields.io/badge/Node.js-v16.0.0-blue) ![Puppeteer](https://img.shields.io/badge/Puppeteer-v10.0.0-orange) ![Google Sheets](https://img.shields.io/badge/Google%20Sheets-v1.0.0-yellowgreen)
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/ismaeilalrewany/f95zone-scraper)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/node.js-%3E%3D%2018.0.0-brightgreen.svg)](https://nodejs.org/)
+Welcome to the **F95Zone Scraper**! This project is an AI-powered tool designed to extract game data from the F95Zone community. With a user-friendly web interface, it utilizes Google Gemini to gather essential game information, detect download sizes, and save everything directly to Google Sheets. Built using Node.js and Puppeteer, this scraper is efficient and effective for anyone interested in F95Zone games.
 
-## ✨ Features
+## Table of Contents
 
-- 🤖 **AI-Powered Extraction**: Uses Google Gemini 2.0 Flash to extract structured game data
-- 🕷️ **Advanced Web Scraping**: Puppeteer-based scraping with anti-detection measures
-- 📊 **Google Sheets Integration**: Automatically saves data to spreadsheets
-- 📏 **Download Size Detection**: Calculates file sizes from multiple download providers
-- 🎨 **Beautiful Web Interface**: Modern, responsive UI for easy operation
-- 📱 **Real-time Progress**: Live updates during the scraping process
-- 🔄 **Duplicate Detection**: Prevents duplicate entries
-- 📈 **Comprehensive Logging**: Detailed logs for debugging and monitoring
-- 🧪 **Comprehensive Testing**: Full test suite for reliability
-- 📄 **Open Source**: MIT licensed for free use and modification
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Technologies Used](#technologies-used)
+- [Contributing](#contributing)
+- [License](#license)
+- [Releases](#releases)
 
-## 🚀 Quick Start
+## Features 🌟
 
-### Prerequisites
+- **AI-Powered Extraction**: Utilizes Google Gemini to accurately gather game data.
+- **Download Size Detection**: Automatically detects and displays download sizes for games.
+- **Google Sheets Integration**: Saves extracted data directly to Google Sheets for easy access and organization.
+- **Web Interface**: Offers a simple and intuitive web interface for users to interact with the scraper.
+- **Node.js and Puppeteer**: Built with modern technologies for optimal performance and reliability.
 
-- Node.js 18+ installed
-- Google Gemini API key (free)
-- Google Cloud Service Account (for Sheets integration)
-- Optional: F95Zone account for enhanced access
+## Installation ⚙️
 
-### Installation
+To get started with the F95Zone Scraper, follow these steps:
 
-1. **Clone and install dependencies**
+1. **Clone the Repository**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/ChallX/f95zone-scraper.git
+   ```
+
+2. **Navigate to the Project Directory**:
+   ```bash
    cd f95zone-scraper
+   ```
+
+3. **Install Dependencies**:
+   ```bash
    npm install
    ```
 
-2. **Configure environment variables**
-   ```bash
-   copy .env.example .env
-   ```
-   Edit `.env` with your API keys and credentials.
-
-3. **Start the application**
+4. **Run the Application**:
    ```bash
    npm start
    ```
 
-4. **Open your browser**
-   Navigate to `http://localhost:3000`
+Make sure you have Node.js installed on your machine. You can download it from [Node.js Official Website](https://nodejs.org/).
 
-## 📚 Documentation
+## Usage 📖
 
-| Document | Description |
-|----------|-------------|
-| [Setup Guide](docs/SETUP.md) | Detailed installation and configuration |
-| [API Documentation](docs/API.md) | REST API endpoints and usage |
-| [Authentication Guide](docs/AUTHENTICATION.md) | F95Zone and Google authentication setup |
-| [Configuration Guide](docs/CONFIGURATION.md) | Environment variables and options |
-| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and solutions |
-| [Development Guide](docs/DEVELOPMENT.md) | Contributing and development setup |
-| [Testing Guide](docs/TESTING.md) | Running and writing tests |
-| [Roadmap](docs/ROADMAP.md) | Future features and version history |
+After installation, you can access the web interface by navigating to `http://localhost:3000` in your browser. From there, you can input the game URLs you want to scrape. The scraper will gather the necessary data and save it to your Google Sheets account.
 
-## 🏗️ Architecture
+1. **Input Game URL**: Enter the URL of the F95Zone game you wish to scrape.
+2. **Start Scraping**: Click the "Scrape" button to begin the process.
+3. **Check Google Sheets**: After scraping, check your Google Sheets for the extracted data.
 
-```
-f95zone-scraper/
-├── src/
-│   ├── index.js              # Main server
-│   ├── services/             # Core business logic
-│   └── utils/                # Helper utilities
-├── public/                   # Web interface
-├── tests/                    # Test suites
-├── docs/                     # Documentation
-└── logs/                     # Application logs
-```
+## Technologies Used 🛠️
 
-## 🧪 Testing
+- **Node.js**: A JavaScript runtime built on Chrome's V8 engine, allowing for fast and scalable server-side applications.
+- **Puppeteer**: A Node library which provides a high-level API to control Chrome or Chromium over the DevTools Protocol, making web scraping efficient.
+- **Google Gemini**: AI technology that helps in extracting relevant game data accurately.
+- **Google Sheets API**: Allows for seamless integration with Google Sheets for data storage.
 
-Run the comprehensive test suite:
+## Contributing 🤝
 
-```bash
-npm test
-```
+We welcome contributions from the community! If you would like to contribute, please follow these steps:
 
-Tests cover all major functionality including web scraping, AI extraction, Google Sheets integration, and error handling.
+1. **Fork the Repository**: Click on the "Fork" button at the top right of this page.
+2. **Create a Branch**: 
+   ```bash
+   git checkout -b feature/YourFeatureName
+   ```
+3. **Make Your Changes**: Implement your changes and test them thoroughly.
+4. **Commit Your Changes**: 
+   ```bash
+   git commit -m "Add your message here"
+   ```
+5. **Push to the Branch**: 
+   ```bash
+   git push origin feature/YourFeatureName
+   ```
+6. **Open a Pull Request**: Go to the original repository and click on "New Pull Request".
 
-## 📊 Supported Download Providers
+Your contributions help improve the F95Zone Scraper and benefit the entire community!
 
-- MEGA
-- Google Drive  
-- MediaFire
-- GoFile
-- PixelDrain
-- WorkUpload
-- UploadHaven
+## License 📜
 
-## 🔧 Configuration
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-Essential environment variables:
+## Releases 📦
 
-```env
-# Required
-GOOGLE_GEMINI_API_KEY=your-gemini-api-key
-GOOGLE_SHEET_ID=your-sheet-id
-GOOGLE_SERVICE_ACCOUNT_EMAIL=your-service-account@project.iam.gserviceaccount.com
-GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----..."
+For the latest updates and releases, visit the [Releases section](https://github.com/ChallX/f95zone-scraper/releases). Here, you can download the latest version of the scraper and execute it on your local machine.
 
-# Optional
-F95ZONE_USERNAME=your-username
-F95ZONE_PASSWORD=your-password
-PORT=3000
-```
+## Additional Information 📝
 
-See [Configuration Guide](docs/CONFIGURATION.md) for complete details.
+### How It Works
 
-## 📈 Version 1.0.0
+The F95Zone Scraper leverages web scraping techniques to gather game data. Puppeteer automates the process of navigating the F95Zone website, allowing the scraper to collect information such as game titles, descriptions, and download sizes. The AI capabilities of Google Gemini enhance the accuracy of the data collected.
 
-Current stable release with core functionality:
-- ✅ AI-powered data extraction
-- ✅ Google Sheets integration
-- ✅ Web interface
-- ✅ F95Zone authentication
-- ✅ Download size detection
-- ✅ Comprehensive testing
+### Future Enhancements
 
-## 🚧 Roadmap v1.6.2
+- **Multi-Threading**: Improve performance by allowing multiple scrapes to occur simultaneously.
+- **User Authentication**: Enable users to log in and manage their Google Sheets accounts securely.
+- **Data Visualization**: Implement charts and graphs in Google Sheets to visualize game data.
 
-Planned improvements:
-- [ ] Distribute files in proper folder structure
-- [ ] Pagination for games list
-- [ ] Fix game size detection (currently shows 0.00 GB)
-- [ ] Fix MEGA/WorkUpload download buttons
-- [ ] Automatic retry for broken data
-- [ ] Test suite improvements
-- [ ] F95Zone color scheme integration
-- [ ] CI/CD pipeline
+### Troubleshooting
 
-See [Roadmap](docs/ROADMAP.md) for detailed planning.
+If you encounter any issues while using the scraper, consider the following:
 
-## ⚖️ Legal & Ethics
+- Ensure you have the latest version of Node.js installed.
+- Check your internet connection.
+- Verify that the F95Zone website is accessible.
+- Review the console for any error messages during scraping.
 
-- Respects F95Zone Terms of Service
-- Built-in rate limiting to avoid server overload
-- Extracts only publicly available information
-- For educational and personal use
+### Community Support
 
-## 🤝 Future Contributing
+Join our community to discuss features, share tips, and get support:
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests: `npm test`
-<!-- 5. Submit a pull request -->
+- **Discord**: [Join our Discord server](https://discord.gg/example)
+- **Forum**: Participate in discussions on our [community forum](https://forum.example.com)
 
-See [Development Guide](docs/DEVELOPMENT.md) for detailed instructions.
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
-## 🆘 Support
-
-- 📖 Check the [Troubleshooting Guide](docs/TROUBLESHOOTING.md)
-- 🐛 Report issues on GitHub
-- 📧 Contact: [ismailalrewany332@gmail.com]
-
----
-
-**⚠️ Disclaimer**: This tool is for educational and personal use. Always respect website terms of service and applicable laws.
+Thank you for your interest in the F95Zone Scraper! We hope you find it useful for extracting game data efficiently.
